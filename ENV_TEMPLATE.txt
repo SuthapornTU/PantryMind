@@ -1,0 +1,16 @@
+# คัดลอกไฟล์นี้เป็น .env.local แล้วใส่ค่าจริง (.env.local ถูก .gitignore ไว้แล้ว ไม่ถูก commit)
+# ห้ามใส่ค่าจริงในไฟล์ .env.local.example นี้เด็ดขาด
+
+# Supabase → Project Settings → Database → Connection string → URI
+# (เลือกโหมด "Transaction" สำหรับ serverless/Vercel ก็ได้ ใส่รหัสผ่าน database ที่ตั้งไว้ตอนสร้าง project)
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@[YOUR-PROJECT-REF].supabase.co:5432/postgres
+
+# Google AI Studio → https://aistudio.google.com/apikey
+# ใช้สำหรับ OCR ใบเสร็จ, identify ของสด, recipe fallback, monthly insight summary,
+# และ fallback ตอนหาวันหมดอายุของที่ไม่มีใน food_reference (ไม่ตั้งค่าไว้ก็รันได้ แค่ใช้ default
+# 7 วันไปก่อนแทนการถาม AI — ดู src/lib/expiryEstimate.js)
+GEMINI_API_KEY=
+
+# ใช้ตอนต่อ Push Notification (build ลำดับข้อ 6 — ยังไม่ได้ implement ในรอบนี้)
+# FIREBASE_PROJECT_ID=
+# FIREBASE_VAPID_KEY=
