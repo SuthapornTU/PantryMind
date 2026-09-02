@@ -90,7 +90,7 @@ export default function BottomNav() {
             <button
               type="button"
               aria-label="พิมพ์เพิ่มของเอง"
-              onClick={() => goTo("/add-item")}
+              onClick={() => goTo("/add-item/browse")}
               className="w-11 h-11 rounded-full bg-white border border-zinc-200 shadow-md text-rose-500 flex items-center justify-center"
             >
               <PencilIcon className="w-5 h-5" />
