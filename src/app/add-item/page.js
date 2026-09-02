@@ -27,7 +27,9 @@ function AddItemForm() {
 
   const initialName = searchParams.get("name") || "";
   const paramCategory = searchParams.get("category");
-  const initialCategory = CATEGORIES.includes(paramCategory) ? paramCategory : CATEGORIES[0];
+  // fallback เป็นค่าว่าง (ไม่ใช่ CATEGORIES[0]) เมื่อเปิดหน้านี้ตรงๆ โดยไม่มี query param —
+  // กัน user เผลอบันทึกด้วยหมวดหมู่ที่ระบบเดาให้เฉยๆ ทั้งที่ยังไม่ได้เลือกเอง
+  const initialCategory = CATEGORIES.includes(paramCategory) ? paramCategory : "";
 
   const [name, setName] = useState(initialName);
   const [suggestions, setSuggestions] = useState([]);
@@ -129,8 +131,8 @@ function AddItemForm() {
     e.preventDefault();
     setFormError(null);
 
-    if (!name.trim() || !expiryDate) {
-      setFormError("กรอกชื่อของและวันหมดอายุก่อนนะ");
+    if (!name.trim() || !category || !expiryDate) {
+      setFormError("กรอกชื่อของ เลือกหมวดหมู่ และวันหมดอายุก่อนนะ");
       return;
     }
 
@@ -226,6 +228,9 @@ function AddItemForm() {
             onChange={(e) => setCategory(e.target.value)}
             className="w-full rounded-xl border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 px-3 py-2.5 text-sm font-medium"
           >
+            <option value="" disabled>
+              เลือกหมวดหมู่
+            </option>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {c}
