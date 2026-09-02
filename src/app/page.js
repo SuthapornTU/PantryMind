@@ -166,10 +166,15 @@ export default async function Home() {
               </ul>
             )}
 
-            {/* placeholder ภารกิจ+ต้นไม้ (ยังไม่ทำ) */}
-            <div className="rounded-2xl bg-pink-50 dark:bg-pink-950/20 p-4 text-sm text-pink-400 dark:text-pink-300/70">
-              ภารกิจประจำวัน 🌱 ต้นไม้ และสถิติรายเดือน — เร็วๆ นี้
-            </div>
+            {/* ทางเข้าหน้าภารกิจ + ต้นไม้ — ไม่มีแท็บว่างใน BottomNav เหลือให้ใส่แล้ว
+                (หน้าแรก/สถิติ/+/ช้อปปิ้ง/ตั้งค่า เต็มพอดี) เลยเข้าถึงผ่านการ์ดนี้แทน */}
+            <Link
+              href="/missions"
+              className="rounded-2xl bg-pink-50 dark:bg-pink-950/20 p-4 text-sm text-pink-500 dark:text-pink-300 flex items-center justify-between"
+            >
+              <span>ภารกิจประจำวัน 🌱 ดูภารกิจ + ต้นไม้ของคุณ</span>
+              <ChevronRightIcon className="w-4 h-4 shrink-0" />
+            </Link>
           </>
         )}
       </div>
