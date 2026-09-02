@@ -83,6 +83,24 @@ export function ChevronRightIcon({ className }) {
   );
 }
 
+export function CameraIcon({ className }) {
+  return (
+    <Svg className={className}>
+      <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1 1 0 0 1 9.36 5h5.28a1 1 0 0 1 .86.5L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z" />
+      <circle cx="12" cy="13" r="3.2" />
+    </Svg>
+  );
+}
+
+export function PencilIcon({ className }) {
+  return (
+    <Svg className={className}>
+      <path d="M4 20l.9-4.2L16.2 4.5a1.5 1.5 0 0 1 2.1 0l1.2 1.2a1.5 1.5 0 0 1 0 2.1L8.2 19.1 4 20Z" />
+      <path d="M14.5 6.5l3 3" />
+    </Svg>
+  );
+}
+
 export function LeafIcon({ className }) {
   return (
     <Svg className={className}>

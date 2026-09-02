@@ -166,7 +166,7 @@ export default async function Home() {
               </ul>
             )}
 
-            {/* placeholder ภารกิจ+ต้นไม้+สถิติ (ยังไม่สร้าง — ลำดับ build ข้อ 3-7) */}
+            {/* placeholder ภารกิจ+ต้นไม้ (ยังไม่ทำ) */}
             <div className="rounded-2xl bg-pink-50 dark:bg-pink-950/20 p-4 text-sm text-pink-400 dark:text-pink-300/70">
               ภารกิจประจำวัน 🌱 ต้นไม้ และสถิติรายเดือน — เร็วๆ นี้
             </div>

@@ -1,9 +1,8 @@
 -- PantryMind — Initial schema
--- รวมทุกตารางตาม docs/ARCHITECTURE.md หัวข้อ 7 และ docs/RULE_BASED_IMPLEMENTATION.md
--- สร้างไว้ล่วงหน้าทั้งหมดเพื่อให้ฟีเจอร์ต่อไปเพิ่มได้โดยไม่ต้อง migrate ใหม่บ่อยๆ
--- แต่โค้ด API/หน้าเว็บในรอบนี้ (Core CRUD, ลำดับ build ข้อ 1 ใน ARCHITECTURE.md) ใช้แค่
--- users, pantry_items, item_events, food_reference เท่านั้น — ตารางที่เหลือ (shopping_list,
--- goals, missions*, barcode_map, user_devices, recipes*) รอ implement ตามลำดับ build ข้อ 3-8
+-- สร้างตารางไว้ล่วงหน้าทั้งหมดเพื่อให้ฟีเจอร์ต่อไปเพิ่มได้โดยไม่ต้อง migrate ใหม่บ่อยๆ
+-- แต่โค้ด API/หน้าเว็บตอนนี้ใช้แค่ users, pantry_items, item_events, food_reference เท่านั้น
+-- ตารางที่เหลือ (shopping_list, goals, missions*, barcode_map, user_devices, recipes*)
+-- ยังไม่ implement ในรอบนี้
 --
 -- หมายเหตุ: users.id เป็น SERIAL ชั่วคราว (ยังไม่ได้ต่อ Supabase Auth จริง — ดู TODO(auth)
 -- ใน src/lib/demoUser.js) เมื่อเชื่อม Supabase Auth แล้วให้พิจารณาย้ายเป็น UUID
@@ -46,7 +45,7 @@ INSERT INTO food_reference (name, category, shelf_life_fridge_days, shelf_life_f
 ('ขนมปัง',       'เบเกอรี่',  10,  30,   5),
 ('ไส้กรอก',      'เนื้อสัตว์', 7,   60,   NULL)
 ON CONFLICT (name) DO NOTHING;
--- เป้าหมาย ~50-100 รายการก่อน pilot จริง (ดู docs/PROJECT_CONTEXT.md ข้อ 9.3) — เพิ่มได้เรื่อยๆ
+-- เป้าหมาย ~50-100 รายการก่อน pilot จริง — เพิ่มได้เรื่อยๆ
 
 -- ============ pantry_items ============
 CREATE TABLE IF NOT EXISTS pantry_items (
@@ -168,4 +167,4 @@ INSERT INTO recipe_ingredients (recipe_id, ingredient_name) VALUES
 (2, 'ไข่ไก่'),
 (3, 'ผักกาดขาว'), (3, 'เนื้อหมู')
 ON CONFLICT DO NOTHING;
--- เป้าหมาย ~30-50 เมนูก่อน pilot จริง (ดู docs/PROJECT_CONTEXT.md ข้อ 9.3)
+-- เป้าหมาย ~30-50 เมนูก่อน pilot จริง

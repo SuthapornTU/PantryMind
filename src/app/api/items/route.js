@@ -1,4 +1,4 @@
-// /api/items — Core CRUD ของ pantry_items (ดู docs/ARCHITECTURE.md ลำดับ build ข้อ 1)
+// /api/items — CRUD หลักของ pantry_items
 // GET  -> รายการของที่ยังอยู่ในตู้ (used_at IS NULL) เรียงตามวันหมดอายุ
 // POST -> เพิ่มของใหม่ + insert item_events(added) + เขียนกลับ food_reference ถ้าเป็น Path B
 import { query } from "@/lib/db";
@@ -36,7 +36,7 @@ export async function POST(req) {
     pricePerUnit,
     expiryDate,
     days, // จำนวนวันที่ใช้จริง (สำหรับเขียนกลับ food_reference ตอน Path B)
-    writeBack, // true เฉพาะตอน Path B ปกติ — false ถ้ามาจาก Path A หรือ escape-hatch (ดู RULE_BASED_IMPLEMENTATION.md ข้อ 1)
+    writeBack, // true เฉพาะตอน Path B ปกติ — false ถ้ามาจาก Path A หรือ escape-hatch
   } = body;
 
   if (!name?.trim() || !category || !storageLocation || !expiryDate) {

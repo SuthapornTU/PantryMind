@@ -1,8 +1,7 @@
 // src/lib/db.js
-// Postgres connection ไปที่ Supabase โดยตรง (ใช้ raw SQL ตาม docs/RULE_BASED_IMPLEMENTATION.md
-// ทุกจุด เพราะบาง query ในนั้น เช่น waste_rate, streak, recipe matching % ใช้ window function/
-// FILTER ที่เขียนด้วย Supabase JS query builder ตรงๆ ได้ยาก — ใช้ raw SQL ผ่าน `pg` แทน
-// ส่วน Supabase Auth/Storage (ตอนต่อในลำดับ build ถัดไป) จะใช้ @supabase/supabase-js แยกต่างหาก)
+// Postgres connection ไปที่ Supabase โดยตรง (ใช้ raw SQL เพราะบาง query เช่น waste_rate,
+// streak, recipe matching % ใช้ window function/FILTER ที่เขียนด้วย Supabase JS query builder
+// ตรงๆ ได้ยาก — ใช้ raw SQL ผ่าน `pg` แทน ส่วน Supabase Auth/Storage จะใช้ @supabase/supabase-js แยกต่างหาก)
 //
 // ห้าม import ไฟล์นี้จาก client component — ใช้ได้เฉพาะใน API routes / server components เท่านั้น
 
@@ -14,7 +13,7 @@ function getPool() {
   if (!pool) {
     if (!process.env.DATABASE_URL) {
       throw new Error(
-        "DATABASE_URL ยังไม่ได้ตั้งค่า — คัดลอก .env.local.example เป็น .env.local แล้วใส่ " +
+        "DATABASE_URL ยังไม่ได้ตั้งค่า — คัดลอก ENV_TEMPLATE.txt เป็น .env.local แล้วใส่ " +
           "connection string ของ Supabase (Project Settings → Database → Connection string → URI, " +
           "โหมด 'Transaction' หรือ 'Session' ก็ได้)"
       );

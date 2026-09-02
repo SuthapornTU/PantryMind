@@ -1,7 +1,6 @@
 // src/lib/expiryEstimate.js
 // วันหมดอายุอัตโนมัติแบบ rule-based lookup table + UX 2-path (auto-fill / quick-pick)
-// อิงตาม docs/RULE_BASED_IMPLEMENTATION.md ข้อ 1 — แปลงจาก Express/node-postgres ตัวอย่าง
-// มาเป็น query() ของเราเอง (src/lib/db.js) ตรงๆ ไม่เปลี่ยน logic
+// ใช้ query() ของเราเอง (src/lib/db.js) ต่อฐานข้อมูลตรงๆ
 
 import { query } from "./db";
 
@@ -39,7 +38,7 @@ async function askLLMForShelfLife(foodName, category, storageLocation) {
     }ได้กี่วันก่อนหมดอายุ/เสีย ตอบเป็นตัวเลขจำนวนวันเท่านั้น ห้ามมีข้อความอื่น เช่น "7"`;
 
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CATEGORIES, STORAGE_LOCATIONS } from "@/lib/constants";
 import { ChevronRightIcon } from "@/components/icons";
@@ -17,19 +17,27 @@ function daysBetweenTodayAnd(dateStr) {
   return Math.round(diff / (1000 * 60 * 60 * 24));
 }
 
-export default function AddItemPage() {
+// useSearchParams ต้องอยู่ใน component ที่ห่อด้วย Suspense (ข้อกำหนดของ Next.js App Router)
+// แยก AddItemForm ออกมาเฉพาะ — ค่าจาก query (name/category) แค่เป็น "ค่าตั้งต้น" ของฟอร์มเดิม
+// มาจากผลทาย AI ที่หน้า /add-item/camera ส่งต่อมา (ดู src/app/api/vision-identify/route.js) —
+// user ยังแก้ไข/ต้องกดปุ่ม "บันทึก" เองเหมือนเดิมทุกประการ ไม่มีอะไรถูกบันทึกอัตโนมัติ
+function AddItemForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [name, setName] = useState("");
+  const initialName = searchParams.get("name") || "";
+  const paramCategory = searchParams.get("category");
+  const initialCategory = CATEGORIES.includes(paramCategory) ? paramCategory : CATEGORIES[0];
+
+  const [name, setName] = useState(initialName);
   const [suggestions, setSuggestions] = useState([]);
   const [storageLocation, setStorageLocation] = useState("fridge");
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState(initialCategory);
   const [quantity, setQuantity] = useState(1);
   const [pricePerUnit, setPricePerUnit] = useState("");
 
   // ผลลัพธ์จาก /api/expiry-estimate — เก็บ writeBackToReference จากตรงนี้เสมอ ไม่เปลี่ยนตาม
-  // escape-hatch toggle (ดู docs/RULE_BASED_IMPLEMENTATION.md ข้อ 1: escape-hatch ห้ามเขียนกลับ
-  // เสมอ เพราะมันเป็น false อยู่แล้วตั้งแต่ตอนเป็น Path A)
+  // escape-hatch toggle (escape-hatch ห้ามเขียนกลับเสมอ เพราะมันเป็น false อยู่แล้วตั้งแต่ตอนเป็น Path A)
   const [expiryMeta, setExpiryMeta] = useState(null);
   const [uiMode, setUiMode] = useState(null); // "auto-fill" | "quick-pick" (โชว์จริงบนจอ — escape-hatch แก้ตรงนี้ได้)
   const [expiryDate, setExpiryDate] = useState("");
@@ -368,5 +376,13 @@ export default function AddItemPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function AddItemPage() {
+  return (
+    <Suspense fallback={null}>
+      <AddItemForm />
+    </Suspense>
   );
 }

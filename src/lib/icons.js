@@ -1,6 +1,6 @@
 // src/lib/icons.js
 // ไอคอนเส้น (line icons) แบบ inline SVG เล็กๆ ไม่พึ่ง library ภายนอก (กัน npm install ใหม่)
-// สไตล์อิงจาก Figma mockup เดิม (เส้นบาง มุมโค้ง)
+// เส้นบาง มุมโค้ง ให้เข้ากับสไตล์แอปโดยรวม
 
 function Svg({ children, className = "w-5 h-5" }) {
   return (

@@ -1,8 +1,7 @@
 "use client";
 
 // หน้า "สถิติ" — โดนัทชาร์ตสัดส่วนมูลค่าของที่ทิ้ง (event_type='expired_unwanted') แยกตามหมวดหมู่/รายชิ้น
-// ของเดือนที่เลือกอยู่ ดึงจาก /api/stats/waste (SQL aggregation ล้วนๆ) ตามลำดับ build ข้อ 5 ใน
-// docs/ARCHITECTURE.md — ห้ามใช้ AI/ML ตัดสินใจอะไรทั้งสิ้น ตามหลัก "rule-based first" ของโปรเจกต์
+// ของเดือนที่เลือกอยู่ ดึงจาก /api/stats/waste (SQL aggregation ล้วนๆ ไม่มี AI/ML ตัดสินใจ)
 
 import { useEffect, useState } from "react";
 import { ChevronRightIcon, LeafIcon } from "@/components/icons";

@@ -17,7 +17,7 @@ export const metadata = {
   description: "ลดขยะอาหารในครัวเรือน — บันทึกของ เตือนก่อนหมดอายุ แนะนำเมนู",
 };
 
-// Layout นี้ตั้งใจทำเป็น "mobile shell" เท่านั้น (ตามที่ตกลง — ไม่เอา desktop layout)
+// Layout นี้ตั้งใจทำเป็น "mobile shell" เท่านั้น (ไม่ทำ desktop layout)
 // ความกว้างล็อกไว้ที่ max-w-md (~448px) ตรงกลางจอเสมอ ไม่ว่าจะเปิดจากมือถือ/iPad/เบราว์เซอร์
 // จอกว้างตอน dev ก็ตาม — พื้นหลังนอกกรอบ (bg-zinc-200) มีไว้แค่กันดู "ลอย" เวลาทดสอบบนจอเดสก์ท็อป
 export default function RootLayout({ children }) {

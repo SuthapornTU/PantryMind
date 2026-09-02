@@ -1,5 +1,4 @@
 // src/lib/constants.js — ค่าคงที่ที่ใช้ร่วมกันระหว่างฟอร์ม/API (หมวดหมู่ + ที่เก็บ)
-// อิงตาม docs/ARCHITECTURE.md หัวข้อ 4 (Data Entry Fields)
 
 export const CATEGORIES = [
   "นม/ไข่",

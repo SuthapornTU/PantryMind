@@ -1,15 +1,12 @@
 // src/lib/wasteStats.js — สถิติของที่ทิ้ง (event_type='expired_unwanted' ใน item_events)
-// SQL aggregation ล้วนๆ ตามหลัก "rule-based first" ของโปรเจกต์ (ดู docs/PROJECT_CONTEXT.md ข้อ 2
-// และ docs/ARCHITECTURE.md ลำดับ build ข้อ 5) — ไม่มีจุดไหนใช้ AI/ML ตัดสินใจอะไรทั้งสิ้น
+// SQL aggregation ล้วนๆ ไม่มีจุดไหนใช้ AI/ML ตัดสินใจอะไรทั้งสิ้น
 
 import { query } from "./db";
 import { monthRange } from "./monthUtils";
 
-// item_events เก็บแค่ item_name (ไม่มี item_id) เหมือนกับ pattern ที่ใช้อยู่แล้วใน
-// suggestMonthlyGoal() (docs/RULE_BASED_IMPLEMENTATION.md ข้อ 4.3) — แต่ตรงนั้น JOIN ตรงๆ กับ
-// pi.name ซึ่งถ้า user เคยเพิ่มของชื่อเดียวกันหลายครั้ง (ราคาไม่เท่ากัน) จะ fan-out ทำให้ยอดพองเกินจริง
-// ที่นี่ใช้ LATERAL join เลือกแค่แถว pantry_items ล่าสุด (added_at DESC) ต่อ 1 event แทน ยังคงเป็น
-// SQL ล้วนๆ ไม่มี AI แค่แม่นยำกว่าเดิม
+// item_events เก็บแค่ item_name (ไม่มี item_id) ถ้า JOIN ตรงๆ กับ pi.name แล้ว user เคยเพิ่ม
+// ของชื่อเดียวกันหลายครั้ง (ราคาไม่เท่ากัน) จะ fan-out ทำให้ยอดพองเกินจริง — ที่นี่ใช้ LATERAL join
+// เลือกแค่แถว pantry_items ล่าสุด (added_at DESC) ต่อ 1 event แทน แม่นยำกว่า JOIN ตรงๆ
 const WASTE_EVENTS_WITH_ITEM = `
   FROM item_events ie
   LEFT JOIN LATERAL (
