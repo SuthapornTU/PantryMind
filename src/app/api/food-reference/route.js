@@ -1,6 +1,6 @@
 // GET /api/food-reference?q=... — ค้นหาใน food_reference สำหรับ autocomplete ตอนพิมพ์ชื่อของ
 // (ใช้โชว์ปุ่มเลือกไวในฟอร์มเพิ่มสินค้า)
-import { query } from "@/lib/db";
+import { query } from "@/lib/server/db";
 
 export async function GET(req) {
   const q = new URL(req.url).searchParams.get("q")?.trim();

@@ -41,7 +41,7 @@ export default function AddItemCameraPage() {
   }
 
   return (
-    <div>
+    <div className="pb-28">
       {/* Header สไตล์หน้าย่อย: ลูกศรย้อนกลับ + ชื่อหน้า (pattern เดียวกับ add-item/page.js) */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         <Link

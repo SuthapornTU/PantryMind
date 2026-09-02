@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CATEGORIES, STORAGE_LOCATIONS } from "@/lib/constants";
+import { CATEGORIES, STORAGE_LOCATIONS } from "@/lib/shared/constants";
 import { ChevronRightIcon } from "@/components/icons";
 
 function toISODate(daysFromToday) {
@@ -171,7 +171,7 @@ function AddItemForm() {
   }
 
   return (
-    <div>
+    <div className="pb-28">
       {/* Header สไตล์หน้าย่อย: ลูกศรย้อนกลับ + ชื่อหน้า */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         <Link

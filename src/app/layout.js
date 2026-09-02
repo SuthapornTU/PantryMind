@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-full bg-zinc-200 dark:bg-zinc-950 flex justify-center">
         <div className="w-full max-w-md min-h-screen bg-stone-50 dark:bg-zinc-900 flex flex-col relative">
-          <main className="flex-1 pb-24">{children}</main>
+          <main className="flex-1">{children}</main>
           <BottomNav />
         </div>
       </body>

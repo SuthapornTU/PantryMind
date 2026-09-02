@@ -3,12 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { HomeIcon, ChartIcon, CartIcon, GearIcon, PlusIcon, CameraIcon, PencilIcon } from "./icons";
+import { HomeIcon, ChartIcon, CartIcon, AwardIcon, PlusIcon, CameraIcon, PencilIcon } from "./icons";
 
-// bottom tab bar สไตล์แอปมือถือ (home / สถิติ / + / ช้อปปิ้ง / ตั้งค่า)
+// bottom tab bar สไตล์แอปมือถือ (home / สถิติ / + / ช้อปปิ้ง / ภารกิจ)
+// สี/ไอคอน/รูปทรงอ้างอิงดีไซน์ Figma หน้า Home (node 2:5, Tool Bar) — ลอยเป็นแคปซูลพื้นครีม #f0e5d2
+// มีระยะห่างขอบจอ ไม่ชิดขอบเหมือนของเดิม — ใช้ bg โปร่งแสง + backdrop-blur (ไม่ทึบเหมือน Figma เป๊ะๆ)
+// เพราะ user อยากให้บาร์นี้ดูกลมกลืนเหมือนกันทุกหน้า แม้พื้นหลังแต่ละหน้าจะสีไม่เหมือนกัน (หน้า Home
+// พื้นครีมเรียบ, หน้าสถิติ/ช้อปปิ้งพื้นไล่เฉดสีอื่น) — โปร่งแสงเลยทำให้กลืนกับพื้นหลังใต้บาร์ได้ทุกหน้า
+// ใช้ร่วมกันทุกหน้า ไม่ใช่แค่หน้า Home
 // ล็อกไว้ตรงกลางความกว้างระดับมือถือ/iPad เสมอ ไม่ทำ layout สำหรับจอเดสก์ท็อป
 // ไม่มีแท็บแยกสำหรับ "รายการของทั้งหมด" — เข้าถึงผ่านลิงก์ "ดูทั้งหมด" ในหน้าแรกแทน
-// Settings ยังไม่ implement ใส่ไว้ให้เห็นภาพรวม UI แต่กดไม่ได้ยัง
+// ภารกิจ (มิชชัน) ยังไม่ implement ใส่ไว้ให้เห็นภาพรวม UI แต่กดไม่ได้ยัง
 // (opacity ต่ำ + ไม่ใช่ลิงก์) กัน user งงว่าทำไมกดแล้วไม่มีอะไรเกิดขึ้น
 // ปุ่มกลาง "+" เป็น expandable FAB: กดแล้วเด้งปุ่มย่อย 2 อัน (ถ่ายรูป / พิมพ์เอง) แทนที่จะพา
 // ไปหน้า add-item ตรงๆ
@@ -21,9 +26,9 @@ function NavLink({ href, label, Icon, active, onClick }) {
       className="flex flex-col items-center justify-center gap-0.5 w-14 py-1"
     >
       <Icon
-        className={`w-6 h-6 ${active ? "text-rose-500" : "text-zinc-400"}`}
+        className={`w-6 h-6 ${active ? "text-[#4b3535] dark:text-rose-200" : "text-stone-400"}`}
       />
-      <span className={`text-[10px] ${active ? "text-rose-500 font-medium" : "text-zinc-400"}`}>
+      <span className={`text-[10px] ${active ? "text-[#4b3535] dark:text-rose-200 font-medium" : "text-stone-400"}`}>
         {label}
       </span>
     </Link>
@@ -37,8 +42,8 @@ function NavPlaceholder({ label, Icon }) {
       title="เร็วๆ นี้"
       className="flex flex-col items-center justify-center gap-0.5 w-14 py-1 opacity-35 cursor-not-allowed"
     >
-      <Icon className="w-6 h-6 text-zinc-400" />
-      <span className="text-[10px] text-zinc-400">{label}</span>
+      <Icon className="w-6 h-6 text-stone-400" />
+      <span className="text-[10px] text-stone-400">{label}</span>
     </button>
   );
 }
@@ -54,8 +59,8 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-zinc-200 pb-[env(safe-area-inset-bottom)]">
-      <div className="relative flex items-center justify-between px-4 h-16">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+      <div className="relative flex items-center justify-between px-4 h-16 rounded-full bg-[#f0e5d2]/70 backdrop-blur-md shadow-md ring-1 ring-white/40">
         <NavLink
           href="/"
           label="หน้าแรก"
@@ -83,7 +88,7 @@ export default function BottomNav() {
               type="button"
               aria-label="ถ่ายรูปเพิ่มของ"
               onClick={() => goTo("/add-item/camera")}
-              className="w-11 h-11 rounded-full bg-white border border-zinc-200 shadow-md text-rose-500 flex items-center justify-center"
+              className="w-11 h-11 rounded-full bg-white border border-zinc-200 shadow-md text-[#4b3535] flex items-center justify-center"
             >
               <CameraIcon className="w-5 h-5" />
             </button>
@@ -91,7 +96,7 @@ export default function BottomNav() {
               type="button"
               aria-label="พิมพ์เพิ่มของเอง"
               onClick={() => goTo("/add-item")}
-              className="w-11 h-11 rounded-full bg-white border border-zinc-200 shadow-md text-rose-500 flex items-center justify-center"
+              className="w-11 h-11 rounded-full bg-white border border-zinc-200 shadow-md text-[#4b3535] flex items-center justify-center"
             >
               <PencilIcon className="w-5 h-5" />
             </button>
@@ -101,7 +106,7 @@ export default function BottomNav() {
             type="button"
             aria-label={expanded ? "ปิดเมนูเพิ่มของ" : "เพิ่มของ"}
             onClick={() => setExpanded((v) => !v)}
-            className="w-14 h-14 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/30"
+            className="w-14 h-14 rounded-full bg-[#4b3535] hover:bg-[#3a2929] text-white flex items-center justify-center shadow-lg shadow-[#4b3535]/30"
           >
             <PlusIcon
               className={`w-7 h-7 transition-transform duration-200 ${expanded ? "rotate-45" : "rotate-0"}`}
@@ -116,7 +121,7 @@ export default function BottomNav() {
           active={pathname === "/shopping"}
           onClick={() => setExpanded(false)}
         />
-        <NavPlaceholder label="ตั้งค่า" Icon={GearIcon} />
+        <NavPlaceholder label="ภารกิจ" Icon={AwardIcon} />
       </div>
     </nav>
   );

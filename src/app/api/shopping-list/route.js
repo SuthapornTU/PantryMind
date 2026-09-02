@@ -1,8 +1,8 @@
 // /api/shopping-list — Core CRUD ของ shopping_list
 // GET  -> รายการที่ status='pending' เรียงล่าสุดก่อน พร้อมเช็คว่ามีของชื่อเดียวกันในตู้อยู่แล้วไหม
 // POST -> เพิ่มรายการใหม่ลง shopping list
-import { query } from "@/lib/db";
-import { DEMO_USER_ID } from "@/lib/demoUser";
+import { query } from "@/lib/server/db";
+import { DEMO_USER_ID } from "@/lib/server/demoUser";
 
 export async function GET() {
   const result = await query(

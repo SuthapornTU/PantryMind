@@ -1,8 +1,8 @@
 // /api/stats/waste-history?months=6
 // ยอดรวมมูลค่าของที่ทิ้งย้อนหลังหลายเดือน สำหรับปุ่ม "เปรียบเทียบ" + บอกว่าเดือนนี้สูง/ต่ำกว่า
 // ค่าเฉลี่ยกี่บาท — arithmetic ธรรมดาจากตัวเลขที่ query มาแล้ว ไม่มี AI/ML
-import { getWasteHistory } from "@/lib/wasteStats";
-import { DEMO_USER_ID } from "@/lib/demoUser";
+import { getWasteHistory } from "@/lib/server/wasteStats";
+import { DEMO_USER_ID } from "@/lib/server/demoUser";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);

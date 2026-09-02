@@ -2,7 +2,7 @@
 // AI ใช้แค่ "เดา" เท่านั้น ห้ามตัดสินใจ/บันทึกอะไรแทนคน — ผลลัพธ์จากตรงนี้ต้องผ่านฟอร์ม
 // add-item ให้ user เห็น/แก้ไข/กดยืนยันเองเสมอก่อนเขียนลง pantry_items จริง (ไม่มีจุดไหน
 // insert ตรงนี้เลย) — ดู pattern การเรียก Gemini + fallback เมื่อไม่มี key ใน src/lib/expiryEstimate.js
-import { CATEGORIES } from "@/lib/constants";
+import { CATEGORIES } from "@/lib/shared/constants";
 
 const GENERIC_ERROR = "ทายรูปนี้ไม่ออก ลองถ่ายใหม่หรือพิมพ์ชื่อเองก่อนนะ";
 

@@ -3,8 +3,8 @@
 // เขียนลง status='checked' (ไม่ใช่ 'bought') เพราะตาราง shopping_list ที่มีอยู่จริงมี CHECK
 // constraint อนุญาตแค่ 'pending'/'checked' เท่านั้น — action ฝั่ง API ยังคงชื่อ "bought" ตามที่ตกลง
 // ไว้ (ความหมายเดียวกัน แค่ค่าที่เขียนจริงลง DB ต่างจากชื่อ action)
-import { query } from "@/lib/db";
-import { DEMO_USER_ID } from "@/lib/demoUser";
+import { query } from "@/lib/server/db";
+import { DEMO_USER_ID } from "@/lib/server/demoUser";
 
 export async function PATCH(req, { params }) {
   const { id } = await params;
