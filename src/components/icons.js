@@ -92,6 +92,33 @@ export function CameraIcon({ className }) {
   );
 }
 
+export function BarcodeIcon({ className }) {
+  return (
+    <Svg className={className}>
+      <path d="M4 6V4h3" />
+      <path d="M20 6V4h-3" />
+      <path d="M4 18v2h3" />
+      <path d="M20 18v2h-3" />
+      <path d="M6 8v8" />
+      <path d="M9.5 8v8" />
+      <path d="M12.5 8v8" />
+      <path d="M15 8v8" />
+      <path d="M18 8v8" />
+    </Svg>
+  );
+}
+
+export function ReceiptIcon({ className }) {
+  return (
+    <Svg className={className}>
+      <path d="M6 3h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3V3Z" />
+      <path d="M8.5 8h7" />
+      <path d="M8.5 11.5h7" />
+      <path d="M8.5 15h4" />
+    </Svg>
+  );
+}
+
 export function PencilIcon({ className }) {
   return (
     <Svg className={className}>

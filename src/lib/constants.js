@@ -10,6 +10,18 @@ export const CATEGORIES = [
   "อื่นๆ",
 ];
 
+// ที่เก็บ default ต่อหมวดหมู่ — ใช้ตอนสแกนใบเสร็จเพื่อเดาที่เก็บล่วงหน้าให้แต่ละรายการ
+// (ก่อนเรียก /api/expiry-estimate เพื่อเช็ค Path A/B) — user ยังเปลี่ยนที่เก็บเองได้เสมอในหน้ารีวิว
+export const CATEGORY_DEFAULT_STORAGE = {
+  "นม/ไข่": "fridge",
+  "เนื้อสัตว์": "fridge",
+  "ผัก/ผลไม้": "fridge",
+  "เบเกอรี่": "pantry",
+  "ของแห้ง/เครื่องปรุง": "pantry",
+  "เครื่องดื่ม": "fridge",
+  "อื่นๆ": "fridge",
+};
+
 export const STORAGE_LOCATIONS = [
   { value: "fridge", label: "ตู้เย็น" },
   { value: "freezer", label: "ช่องแช่แข็ง" },

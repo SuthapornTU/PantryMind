@@ -4,6 +4,7 @@
 // DELETE -> ลบรายการทิ้ง (สำหรับกรณีกรอกผิด/ลบเอง ไม่ log item_events เพราะไม่ใช่ used/expired_unwanted จริง)
 import { query } from "@/lib/db";
 import { DEMO_USER_ID } from "@/lib/demoUser";
+import { daysUntil, ensureTodayMissions, incrementMissionProgress } from "@/lib/missions";
 
 export async function PATCH(req, { params }) {
   const { id } = await params;
@@ -11,16 +12,24 @@ export async function PATCH(req, { params }) {
 
   if (body.action === "used") {
     const result = await query(
-      `UPDATE pantry_items SET used_at = now() WHERE id = $1 AND user_id = $2 RETURNING name`,
+      `UPDATE pantry_items SET used_at = now() WHERE id = $1 AND user_id = $2 RETURNING name, expiry_date`,
       [id, DEMO_USER_ID]
     );
     if (result.rows.length === 0) {
       return Response.json({ error: "ไม่พบรายการนี้" }, { status: 404 });
     }
+    const item = result.rows[0];
     await query(
       `INSERT INTO item_events (user_id, item_name, event_type) VALUES ($1, $2, 'used')`,
-      [DEMO_USER_ID, result.rows[0].name]
+      [DEMO_USER_ID, item.name]
     );
+
+    // ภารกิจ "ใช้ของใกล้หมดอายุ" — นับเฉพาะของที่เหลืออายุ <= 3 วัน (เกณฑ์เดียวกับการ์ดสีแดงในหน้า Home)
+    if (daysUntil(item.expiry_date) <= 3) {
+      await ensureTodayMissions(DEMO_USER_ID);
+      await incrementMissionProgress(DEMO_USER_ID, "use_near_expiry_items", 1);
+    }
+
     return Response.json({ ok: true });
   }
 
