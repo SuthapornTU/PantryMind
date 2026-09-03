@@ -2,8 +2,8 @@
 // AI ใช้แค่ "แกะรายการ" เท่านั้น ห้ามตัดสินใจ/บันทึกอะไรแทนคน — ผลลัพธ์จากตรงนี้ต้องผ่านหน้า
 // /add-item/receipt ให้ user ติ๊ก/แก้ไข/ยืนยันทีละรายการก่อนเขียนลง pantry_items จริงเสมอ
 // (ไม่มีจุดไหน insert ตรงนี้เลย) — pattern การเรียก Gemini เดียวกับ src/app/api/vision-identify/route.js
-import { CATEGORIES, CATEGORY_DEFAULT_STORAGE } from "@/lib/constants";
-import { resolveExpiryUI } from "@/lib/expiryEstimate";
+import { CATEGORIES, CATEGORY_DEFAULT_STORAGE } from "@/lib/shared/constants";
+import { resolveExpiryUI } from "@/lib/server/expiryEstimate";
 
 const GENERIC_ERROR = "อ่านใบเสร็จไม่ออก ลองถ่ายใหม่หรือเพิ่มของทีละชิ้นแทนนะ";
 

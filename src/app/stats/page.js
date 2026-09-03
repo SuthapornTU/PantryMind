@@ -2,21 +2,26 @@
 
 // หน้า "สถิติ" — โดนัทชาร์ตสัดส่วนมูลค่าของที่ทิ้ง (event_type='expired_unwanted') แยกตามหมวดหมู่/รายชิ้น
 // ของเดือนที่เลือกอยู่ ดึงจาก /api/stats/waste (SQL aggregation ล้วนๆ ไม่มี AI/ML ตัดสินใจ)
+// ดีไซน์อ้างอิง Figma node "Dash Board - หมวดหมู่/ชนิด/เปรียบเทียบ" (17:3099, 46:2678, 46:2755)
+// หมายเหตุ: เฟรม "เปรียบเทียบ" ใน Figma มีแค่ปุ่มสลับ (ไม่มี mockup กราฟเปรียบเทียบจริง)
+// เลยคงกราฟแท่งเปรียบเทียบเดิมของแอปไว้ (ใช้งานได้จริงอยู่แล้ว) แค่รีสกินสีให้เข้าธีมใหม่
+// ส่วนแถว breakdown ดีไซน์ไม่มี % / จำนวนครั้งให้เห็น (มีแค่ชื่อ + ราคา) — ตัด % กับจำนวนครั้ง
+// ออกจากตัวแถวเพื่อให้ตรงดีไซน์ (สัดส่วนยังเห็นได้จากโดนัทชาร์ตด้านบนอยู่แล้ว)
 
 import { useEffect, useState } from "react";
-import { ChevronRightIcon, LeafIcon } from "@/components/icons";
-import { currentMonthStr, shiftMonth, thaiMonthLabel, isCurrentMonth } from "@/lib/monthUtils";
+import { ChevronRightIcon, ChevronsRightIcon, ChevronsLeftIcon } from "@/components/icons";
+import { currentMonthStr, shiftMonth, thaiMonthLabel, isCurrentMonth } from "@/lib/shared/monthUtils";
 
-// พาสเทลโทนเดียวกับที่ใช้อยู่ในหน้าอื่น (rose/amber/violet/emerald/sky/pink) วนซ้ำถ้าหมวดหมู่เยอะกว่านี้
-const PALETTE = ["#fbbf24", "#a78bfa", "#34d399", "#38bdf8", "#fb7185", "#f472b6", "#94a3b8"];
+// พาเลตเดียวกับสีหมวดหมู่ที่ใช้ทั้งแอป (เขียว/ชมพู/ส้ม/ฟ้า) วนซ้ำถ้าหมวดหมู่เยอะกว่านี้
+const PALETTE = ["#bade97", "#edc5ca", "#fcdd9d", "#c3e3ff", "#d8c7f5", "#f5b8c0", "#c9c0b3"];
 
 function formatBaht(n) {
   return Math.round(n).toLocaleString("th-TH");
 }
 
 function DonutChart({ breakdown, total }) {
-  const size = 180;
-  const strokeWidth = 26;
+  const size = 190;
+  const strokeWidth = 30;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
@@ -50,7 +55,7 @@ function DonutChart({ breakdown, total }) {
         r={radius}
         fill="none"
         stroke="currentColor"
-        className="text-zinc-100 dark:text-zinc-800"
+        className="text-white/60"
         strokeWidth={strokeWidth}
       />
       {total > 0 && segments}
@@ -58,12 +63,12 @@ function DonutChart({ breakdown, total }) {
         x="50%"
         y="46%"
         textAnchor="middle"
-        className="fill-zinc-900 dark:fill-zinc-50"
-        style={{ fontSize: 22, fontWeight: 700 }}
+        className="fill-[#4b3535]"
+        style={{ fontSize: 26, fontWeight: 700 }}
       >
         {formatBaht(total)}
       </text>
-      <text x="50%" y="61%" textAnchor="middle" className="fill-zinc-400" style={{ fontSize: 12 }}>
+      <text x="50%" y="61%" textAnchor="middle" className="fill-[#4b3535]" style={{ fontSize: 15 }}>
         บาท
       </text>
     </svg>
@@ -82,13 +87,13 @@ function CompareBarChart({ history, currentMonth }) {
             <div className="w-full flex-1 flex items-end">
               <div
                 className={`w-full rounded-t-md transition-all ${
-                  active ? "bg-rose-500" : "bg-sky-200 dark:bg-sky-900"
+                  active ? "bg-[#4b3535]" : "bg-[#e3f2ff]"
                 }`}
                 style={{ height: `${heightPct}%` }}
                 title={`${formatBaht(h.amount)} บาท`}
               />
             </div>
-            <span className={`text-[10px] ${active ? "text-rose-500 font-medium" : "text-zinc-400"}`}>
+            <span className={`text-[10px] ${active ? "text-[#4b3535] font-medium" : "text-zinc-400"}`}>
               {thaiMonthLabel(h.month)}
             </span>
           </div>
@@ -148,29 +153,28 @@ export default function StatsPage() {
   const total = data?.total || 0;
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="w-8 h-8 rounded-xl bg-rose-100 flex items-center justify-center">
-            <LeafIcon className="w-5 h-5 text-rose-500" />
-          </span>
-          <span className="font-semibold text-zinc-900 dark:text-zinc-50">สถิติ</span>
-        </div>
+    <div className="bg-gradient-to-b from-[#f3ebdd] to-[#d3c8b7] min-h-full pb-28">
+      {/* หัวข้อ */}
+      <div className="px-4 pt-5 pb-1 text-center">
+        <p className="font-semibold text-2xl text-[#4b3535] leading-tight tracking-tight">
+          สัดส่วนราคาอาหาร
+          <br />
+          ที่หมดอายุก่อนการบริโภค
+        </p>
       </div>
 
       <div className="px-4">
         {/* ตัวเลื่อนเดือน */}
-        <div className="flex items-center justify-center gap-4 mb-4">
+        <div className="flex items-center justify-center gap-4 mt-2 mb-1">
           <button
             type="button"
             aria-label="เดือนก่อนหน้า"
             onClick={() => setMonth((m) => shiftMonth(m, -1))}
-            className="w-8 h-8 rounded-full flex items-center justify-center rotate-180 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="w-8 h-8 rounded-full flex items-center justify-center rotate-180 text-[#4b3535]/70 hover:bg-white/40"
           >
             <ChevronRightIcon className="w-4 h-4" />
           </button>
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200 w-20 text-center">
+          <span className="text-sm font-medium text-[#4b3535] w-20 text-center">
             {thaiMonthLabel(month)}
           </span>
           <button
@@ -178,28 +182,23 @@ export default function StatsPage() {
             aria-label="เดือนถัดไป"
             disabled={isCurrentMonth(month)}
             onClick={() => setMonth((m) => shiftMonth(m, 1))}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#4b3535]/70 hover:bg-white/40 disabled:opacity-30 disabled:hover:bg-transparent"
           >
             <ChevronRightIcon className="w-4 h-4" />
           </button>
         </div>
 
         {error ? (
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm text-amber-900 dark:text-amber-200 mb-4">
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 mb-4">
             <p className="font-medium mb-1">ยังต่อฐานข้อมูลไม่ได้</p>
             <p className="text-xs opacity-70">{error}</p>
           </div>
         ) : data === null ? (
-          <p className="text-sm text-zinc-400 text-center py-8">กำลังโหลด...</p>
+          <p className="text-sm text-[#4b3535]/60 text-center py-8">กำลังโหลด...</p>
         ) : (
           <>
             {/* โดนัทชาร์ต */}
-            <div className="rounded-2xl bg-white dark:bg-zinc-800 shadow-sm p-4 mb-4">
-              <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 mb-2">
-                สัดส่วนราคาของอาหารที่หมดอายุ
-                <br />
-                ก่อนถูกบริโภค
-              </p>
+            <div className="py-2 mb-3">
               <DonutChart breakdown={breakdown} total={total} />
             </div>
 
@@ -207,16 +206,18 @@ export default function StatsPage() {
             <button
               type="button"
               onClick={toggleCompare}
-              className="w-full flex items-center justify-between rounded-2xl bg-gradient-to-r from-rose-400 to-rose-500 text-white px-4 py-3 mb-4 shadow-sm shadow-rose-500/20"
+              className="w-full flex items-center justify-between rounded-2xl bg-[rgba(255,45,45,0.45)] text-white px-4 py-2.5 mb-3"
             >
-              <span className="font-medium text-sm">เปรียบเทียบ</span>
-              <ChevronRightIcon
-                className={`w-4 h-4 transition-transform ${showCompare ? "rotate-90" : ""}`}
-              />
+              <span className="font-semibold">เปรียบเทียบ</span>
+              {showCompare ? (
+                <ChevronsLeftIcon className="w-5 h-5" />
+              ) : (
+                <ChevronsRightIcon className="w-5 h-5" />
+              )}
             </button>
 
             {showCompare && (
-              <div className="rounded-2xl bg-white dark:bg-zinc-800 shadow-sm p-4 mb-4">
+              <div className="rounded-2xl bg-[#fffaf2] shadow-sm p-4 mb-3">
                 {historyError ? (
                   <p className="text-xs text-rose-600">{historyError}</p>
                 ) : !history ? (
@@ -224,20 +225,20 @@ export default function StatsPage() {
                 ) : (
                   <>
                     <CompareBarChart history={history.history} currentMonth={history.history.at(-1)?.month} />
-                    <p className="text-sm text-center mt-3 text-zinc-600 dark:text-zinc-300">
+                    <p className="text-sm text-center mt-3 text-zinc-600">
                       {history.diffFromAverage === 0 ? (
                         "เดือนนี้เท่ากับค่าเฉลี่ยย้อนหลัง"
                       ) : history.diffFromAverage > 0 ? (
                         <>
                           เดือนนี้ทิ้งของ{" "}
-                          <span className="font-semibold text-rose-500">
+                          <span className="font-semibold text-[#c77984]">
                             สูงกว่าค่าเฉลี่ย {formatBaht(history.diffFromAverage)} บาท
                           </span>
                         </>
                       ) : (
                         <>
                           เดือนนี้ทิ้งของ{" "}
-                          <span className="font-semibold text-emerald-500">
+                          <span className="font-semibold text-[#5c8656]">
                             ต่ำกว่าค่าเฉลี่ย {formatBaht(-history.diffFromAverage)} บาท
                           </span>
                         </>
@@ -253,14 +254,12 @@ export default function StatsPage() {
             )}
 
             {/* แท็บ หมวดหมู่ / รายชิ้น */}
-            <div className="flex gap-2 mb-3">
+            <div className="flex rounded-2xl bg-[#ccc6bb] p-0.5 mb-3">
               <button
                 type="button"
                 onClick={() => setView("category")}
-                className={`flex-1 px-3 py-2 rounded-full text-sm font-medium border ${
-                  view === "category"
-                    ? "bg-rose-500 text-white border-rose-500"
-                    : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300"
+                className={`flex-1 px-3 py-2.5 rounded-[14px] text-sm font-semibold transition-colors ${
+                  view === "category" ? "bg-[#4b3535] text-white" : "text-[#a49b8e]"
                 }`}
               >
                 หมวดหมู่
@@ -268,55 +267,43 @@ export default function StatsPage() {
               <button
                 type="button"
                 onClick={() => setView("item")}
-                className={`flex-1 px-3 py-2 rounded-full text-sm font-medium border ${
-                  view === "item"
-                    ? "bg-rose-500 text-white border-rose-500"
-                    : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300"
+                className={`flex-1 px-3 py-2.5 rounded-[14px] text-sm font-semibold transition-colors ${
+                  view === "item" ? "bg-[#4b3535] text-white" : "text-[#a49b8e]"
                 }`}
               >
-                รายชิ้น
+                ชนิด
               </button>
             </div>
 
             {/* รายการ breakdown */}
             {breakdown.length === 0 ? (
-              <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 px-4 py-3 text-sm mb-5">
+              <div className="rounded-2xl bg-emerald-50 text-emerald-700 px-4 py-3 text-sm mb-5">
                 ยังไม่มีของที่ทิ้งในเดือนนี้ 🎉
               </div>
             ) : (
-              <ul className="flex flex-col gap-2 mb-5">
+              <div className="rounded-3xl bg-[#fffaf2] shadow-sm p-3 mb-5 flex flex-col gap-2.5">
                 {breakdown.map((seg, i) => {
-                  const percent = total > 0 ? Math.round((seg.amount / total) * 100) : 0;
                   const color = PALETTE[i % PALETTE.length];
                   return (
-                    <li
-                      key={seg.label}
-                      className="flex items-center justify-between gap-3 rounded-xl bg-white dark:bg-zinc-800 shadow-sm p-3"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ background: color }}
-                        />
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm text-zinc-900 dark:text-zinc-50 truncate">
-                            {seg.label}
-                          </p>
-                          <p className="text-xs text-zinc-400">
-                            {seg.count} ครั้ง · {formatBaht(seg.amount)} บาท
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className="shrink-0 text-xs font-semibold rounded-full px-2.5 py-1"
-                        style={{ background: `${color}26`, color }}
+                    <div key={seg.label} className="flex items-center gap-2">
+                      <div
+                        className="flex-1 min-w-0 rounded-2xl bg-white border-2 px-4 py-2.5 text-center"
+                        style={{ borderColor: color }}
                       >
-                        {percent}%
-                      </span>
-                    </li>
+                        <p className="font-semibold text-zinc-900 truncate">{seg.label}</p>
+                      </div>
+                      <div
+                        className="shrink-0 w-24 rounded-2xl px-3 py-2.5 text-center"
+                        style={{ background: color }}
+                      >
+                        <p className="font-semibold text-zinc-900 whitespace-nowrap">
+                          {formatBaht(seg.amount)} บาท
+                        </p>
+                      </div>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             )}
           </>
         )}

@@ -2,9 +2,9 @@
 // PATCH { action: "used" } -> mark ว่า "ใช้แล้ว" + insert item_events(used)
 // PATCH { name?, category?, storageLocation?, expiryDate?, quantity?, pricePerUnit? } -> แก้ไขข้อมูล
 // DELETE -> ลบรายการทิ้ง (สำหรับกรณีกรอกผิด/ลบเอง ไม่ log item_events เพราะไม่ใช่ used/expired_unwanted จริง)
-import { query } from "@/lib/db";
-import { DEMO_USER_ID } from "@/lib/demoUser";
-import { daysUntil, ensureTodayMissions, incrementMissionProgress } from "@/lib/missions";
+import { query } from "@/lib/server/db";
+import { DEMO_USER_ID } from "@/lib/server/demoUser";
+import { daysUntil, ensureTodayMissions, incrementMissionProgress } from "@/lib/server/missions";
 
 export async function PATCH(req, { params }) {
   const { id } = await params;

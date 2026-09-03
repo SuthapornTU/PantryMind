@@ -1,8 +1,8 @@
 // /api/missions
 // GET -> ensure ว่ามีภารกิจของวันนี้ครบ 5 แบบแล้ว (สร้างให้ถ้ายังไม่มี) + คืนภารกิจวันนี้ + ต้นไม้
-import { query } from "@/lib/db";
-import { DEMO_USER_ID } from "@/lib/demoUser";
-import { ensureTodayMissions } from "@/lib/missions";
+import { query } from "@/lib/server/db";
+import { DEMO_USER_ID } from "@/lib/server/demoUser";
+import { ensureTodayMissions } from "@/lib/server/missions";
 
 export async function GET() {
   await ensureTodayMissions(DEMO_USER_ID);

@@ -1,6 +1,6 @@
 // GET /api/expiry-estimate?name=...&storageLocation=fridge
 // บอกฝั่งฟอร์มว่าควรโชว์ Path A (auto-fill) หรือ Path B (quick-pick) ตาม UX 2-path
-import { resolveExpiryUI } from "@/lib/expiryEstimate";
+import { resolveExpiryUI } from "@/lib/server/expiryEstimate";
 
 export async function GET(req) {
   const params = new URL(req.url).searchParams;

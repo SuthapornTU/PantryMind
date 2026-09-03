@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { storageLabel } from "@/lib/constants";
+import { storageLabel } from "@/lib/shared/constants";
 import { ChevronRightIcon } from "@/components/icons";
 
 export default function ItemsPage() {
@@ -59,7 +59,7 @@ export default function ItemsPage() {
   }
 
   return (
-    <div>
+    <div className="pb-28">
       {/* Header สไตล์หน้าย่อย: ลูกศรย้อนกลับ + ชื่อหน้า */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         <Link

@@ -1,8 +1,8 @@
 // GET /api/shopping-list/search?q=... — autocomplete สำหรับหน้าเพิ่มของลง shopping list
 // คู่ขนานกับ /api/food-reference (ไม่แก้ไฟล์เดิม เพราะเดิมใช้กับฟอร์มเพิ่มของเข้าตู้) แต่เพิ่มการเช็ค
 // pantry_items ว่าของที่ค้นเจอมีอยู่ในตู้แล้วกี่ชิ้น (used_at IS NULL) — SQL ล้วนๆ ไม่มี AI
-import { query } from "@/lib/db";
-import { DEMO_USER_ID } from "@/lib/demoUser";
+import { query } from "@/lib/server/db";
+import { DEMO_USER_ID } from "@/lib/server/demoUser";
 
 export async function GET(req) {
   const q = new URL(req.url).searchParams.get("q")?.trim();

@@ -11,7 +11,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { STORAGE_LOCATIONS } from "@/lib/constants";
+import { STORAGE_LOCATIONS } from "@/lib/shared/constants";
 import { ChevronRightIcon, CameraIcon, BarcodeIcon, ReceiptIcon } from "@/components/icons";
 
 function toISODate(daysFromToday) {
@@ -205,8 +205,8 @@ export default function AddItemCameraPage() {
   }
 
   return (
-    <div>
-      {/* Header สไตล์หน้าย่อย: ลูกศรย้อนกลับ + ชื่อหน้า */}
+    <div className="pb-28">
+      {/* Header สไตล์หน้าย่อย: ลูกศรย้อนกลับ + ชื่อหน้า (pattern เดียวกับ add-item/page.js) */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         <Link
           href="/"

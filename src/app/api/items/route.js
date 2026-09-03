@@ -1,9 +1,9 @@
 // /api/items — CRUD หลักของ pantry_items
 // GET  -> รายการของที่ยังอยู่ในตู้ (used_at IS NULL) เรียงตามวันหมดอายุ
 // POST -> เพิ่มของใหม่ + insert item_events(added) + เขียนกลับ food_reference ถ้าเป็น Path B
-import { query } from "@/lib/db";
-import { maybeWriteBackReference } from "@/lib/expiryEstimate";
-import { DEMO_USER_ID } from "@/lib/demoUser"; // TODO(auth): แทนที่ด้วย user_id จริงตอนต่อ Supabase Auth
+import { query } from "@/lib/server/db";
+import { maybeWriteBackReference } from "@/lib/server/expiryEstimate";
+import { DEMO_USER_ID } from "@/lib/server/demoUser"; // TODO(auth): แทนที่ด้วย user_id จริงตอนต่อ Supabase Auth
 
 export async function GET(req) {
   const nearExpiryDays = new URL(req.url).searchParams.get("nearExpiryDays");

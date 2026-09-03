@@ -1,4 +1,4 @@
-// src/lib/missions.js
+// src/lib/server/missions.js
 // ภารกิจรายวัน (missions) + ต้นไม้ (tree_progress) — rule-based ล้วนๆ ไม่มี AI เข้ามาเกี่ยวข้องเลย
 // อิงตาม docs/RULE_BASED_IMPLEMENTATION.md ข้อ 4.2 (สูตร personalize target) และ
 // docs/ARCHITECTURE.md ข้อ 3 (5 แบบภารกิจ + tree leveling ทุก 6 หยด)
