@@ -24,3 +24,16 @@ export async function getDashboardData() {
   const others = all.filter((item) => !nearExpiryIds.has(item.id)).slice(0, 6);
   return { nearExpiry, others };
 }
+
+// ของที่หมดอายุไปแล้วแต่ยังไม่เคยถูก resolve เลย (used_at ว่าง) — ใช้ป้อนเข้า
+// ResolveExpiredPopup ตอนเปิดหน้าแรก ให้ user เคลียร์ทีละรายการ
+export async function getExpiredUnresolvedItems() {
+  const result = await query(
+    `SELECT id, name, expiry_date
+     FROM pantry_items
+     WHERE user_id = $1 AND used_at IS NULL AND expiry_date < CURRENT_DATE
+     ORDER BY expiry_date ASC`,
+    [DEMO_USER_ID]
+  );
+  return result.rows;
+}

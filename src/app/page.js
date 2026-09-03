@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { getDashboardData, daysUntil } from "@/lib/server/dashboard";
+import { getDashboardData, getExpiredUnresolvedItems, daysUntil } from "@/lib/server/dashboard";
 import { formatExpiryDateBE } from "@/lib/shared/dateFormat";
 import { UserIcon, MoreHorizontalIcon, ChevronRightIcon, ChefHatIcon } from "@/components/icons";
+import ResolveExpiredPopup from "@/components/ResolveExpiredPopup";
 
 // สี/องค์ประกอบของหน้านี้อ้างอิงดีไซน์ Figma (node 2:5) โดยตรง — ใช้ hex ตรงตามดีไซน์
 // แทน Tailwind palette ปกติของแอป เพราะเป็นสีเฉพาะของหน้า Home หน้านี้เท่านั้น
@@ -22,15 +23,19 @@ function stockRatio(quantity) {
 export default async function Home() {
   let nearExpiry = [];
   let others = [];
+  let expiredUnresolved = [];
   let dbError = null;
   try {
     ({ nearExpiry, others } = await getDashboardData());
+    expiredUnresolved = await getExpiredUnresolvedItems();
   } catch (err) {
     dbError = err.message;
   }
 
   return (
     <div className="bg-[#fffcf8] dark:bg-zinc-900 min-h-full pb-28">
+      {!dbError && <ResolveExpiredPopup items={expiredUnresolved} />}
+
       {/* Header: อวตาร + คำทักทาย + เมนู "..." (ยังไม่ implement) */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <div className="flex items-center gap-2.5">
