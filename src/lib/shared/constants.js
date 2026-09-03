@@ -22,6 +22,11 @@ export const CATEGORY_DEFAULT_STORAGE = {
   "อื่นๆ": "fridge",
 };
 
+// ตัวเลือกเหตุผลที่ทิ้งของ — ใช้ในป็อปอัพจัดการของหมดอายุ (ResolveExpiredPopup) และเป็นลิสต์ที่
+// /api/classify-waste-reason บังคับให้ AI ตอบได้แค่ค่าในนี้เท่านั้น "อื่นๆ" เป็น catch-all เผื่อ
+// ข้อความที่ user พิมพ์เองไม่เข้าหมวดไหนเลย
+export const WASTE_REASON_CATEGORIES = ["ซื้อเยอะไป", "ลืมกิน", "ไม่ชอบ", "อื่นๆ"];
+
 export const STORAGE_LOCATIONS = [
   { value: "fridge", label: "ตู้เย็น" },
   { value: "freezer", label: "ช่องแช่แข็ง" },
