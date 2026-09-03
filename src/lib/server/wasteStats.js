@@ -28,7 +28,7 @@ export async function getWasteBreakdown(userId, monthStr, view) {
 
   const result = await query(
     `SELECT ${groupExpr} AS label,
-            SUM(COALESCE(pi.price_per_unit, 0) * COALESCE(pi.quantity, 1)) AS amount,
+            SUM(COALESCE(pi.price_per_unit, 0) * COALESCE(pi.quantity, 1) * COALESCE(ie.waste_fraction, 1)) AS amount,
             COUNT(*) AS count
      ${WASTE_EVENTS_WITH_ITEM}
      GROUP BY label
@@ -57,7 +57,7 @@ export async function getWasteHistory(userId, monthsBack) {
   const { start: earliestStart } = monthRange(months[0]);
   const result = await query(
     `SELECT to_char(date_trunc('month', ie.created_at), 'YYYY-MM') AS month,
-            SUM(COALESCE(pi.price_per_unit, 0) * COALESCE(pi.quantity, 1)) AS amount
+            SUM(COALESCE(pi.price_per_unit, 0) * COALESCE(pi.quantity, 1) * COALESCE(ie.waste_fraction, 1)) AS amount
      FROM item_events ie
      LEFT JOIN LATERAL (
        SELECT price_per_unit, quantity

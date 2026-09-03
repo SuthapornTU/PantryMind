@@ -4,9 +4,10 @@
 // (already_have มาจาก /api/shopping-list ที่เช็คกับ pantry_items ให้แล้ว เป็น SQL ล้วนๆ ไม่มี AI)
 // ดีไซน์อ้างอิง Figma node "Shopping list" (17:3122) — วงกลมซ้ายของแต่ละแถวคือปุ่ม "ซื้อแล้ว" เดิม
 // (กดแล้วรายการหายไปจากลิสต์ เหมือน checkbox ติ๊กถูก) ส่วนปุ่มลบยังคงไว้เป็นไอคอน "×" เล็กๆ ด้านขวา
-// หมายเหตุ: ดีไซน์ต้นฉบับมีปุ่ม "ยืนยัน" ลอยด้านล่างและ banner เตือน "กินไม่ทันจนหมดอายุ" ต่อรายการ
-// แต่ทั้งสองอย่างต้องมี flow/ข้อมูลที่แอปนี้ยังไม่มี (ไม่มี batch-confirm, ไม่มีการวิเคราะห์ waste
-// history ต่อชื่อของ) เลยไม่ได้ใส่มาด้วย — ของเดิมเพิ่มลงลิสต์ทันทีที่เลือกอยู่แล้ว
+// หมายเหตุ: ดีไซน์ต้นฉบับมีปุ่ม "ยืนยัน" ลอยด้านล่าง แต่ต้องมี batch-confirm flow ที่แอปนี้ยังไม่มี
+// เลยไม่ได้ใส่มาด้วย — ของเดิมเพิ่มลงลิสต์ทันทีที่เลือกอยู่แล้ว
+// banner เตือน "มักถูกทิ้งบ่อย" ต่อรายการ ใส่แล้ว — มาจาก item.nudge ที่ /api/shopping-list คำนวณให้
+// (checkNudge ใน src/lib/server/nudge.js, rule-based จาก item_events ทั้งหมด ไม่มี AI)
 import { useEffect, useRef, useState } from "react";
 import { FridgeIcon, ChefHatIcon, PlusIcon } from "@/components/icons";
 
@@ -193,6 +194,7 @@ export default function ShoppingPage() {
                   {item.already_have && (
                     <p className="text-sm text-[#5c8656]">มีอยู่แล้ว {item.already_have_quantity} ชิ้น</p>
                   )}
+                  {item.nudge && <p className="text-sm text-amber-600 mt-0.5">⚠️ {item.nudge}</p>}
                 </div>
                 <button
                   type="button"

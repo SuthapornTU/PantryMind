@@ -1,8 +1,10 @@
 // /api/shopping-list — Core CRUD ของ shopping_list
 // GET  -> รายการที่ status='pending' เรียงล่าสุดก่อน พร้อมเช็คว่ามีของชื่อเดียวกันในตู้อยู่แล้วไหม
-// POST -> เพิ่มรายการใหม่ลง shopping list
+//         + nudge เตือนถ้าของชิ้นนี้มักถูกทิ้งบ่อย (ดู src/lib/server/nudge.js)
+// POST -> เพิ่มรายการใหม่ลง shopping list พร้อม nudge ของรายการที่เพิ่งเพิ่มกลับไปทันที
 import { query } from "@/lib/server/db";
 import { DEMO_USER_ID } from "@/lib/server/demoUser";
+import { checkNudge } from "@/lib/server/nudge";
 
 export async function GET() {
   const result = await query(
@@ -19,7 +21,15 @@ export async function GET() {
      ORDER BY sl.created_at DESC`,
     [DEMO_USER_ID]
   );
-  return Response.json({ items: result.rows });
+
+  const items = await Promise.all(
+    result.rows.map(async (row) => ({
+      ...row,
+      nudge: await checkNudge(DEMO_USER_ID, row.item_name),
+    }))
+  );
+
+  return Response.json({ items });
 }
 
 export async function POST(req) {
@@ -30,12 +40,15 @@ export async function POST(req) {
     return Response.json({ error: "ต้องระบุ itemName" }, { status: 400 });
   }
 
+  const name = itemName.trim();
   const inserted = await query(
     `INSERT INTO shopping_list (user_id, item_name, quantity)
      VALUES ($1, $2, $3)
      RETURNING id, item_name, quantity, status, created_at`,
-    [DEMO_USER_ID, itemName.trim(), quantity || 1]
+    [DEMO_USER_ID, name, quantity || 1]
   );
 
-  return Response.json({ item: inserted.rows[0] }, { status: 201 });
+  const nudge = await checkNudge(DEMO_USER_ID, name);
+
+  return Response.json({ item: inserted.rows[0], nudge }, { status: 201 });
 }
