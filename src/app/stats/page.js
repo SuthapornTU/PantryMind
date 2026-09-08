@@ -8,6 +8,9 @@
 // ส่วนแถว breakdown ดีไซน์ไม่มี % / จำนวนครั้งให้เห็น (มีแค่ชื่อ + ราคา) — ตัด % กับจำนวนครั้ง
 // ออกจากตัวแถวเพื่อให้ตรงดีไซน์ (สัดส่วนยังเห็นได้จากโดนัทชาร์ตด้านบนอยู่แล้ว)
 
+// บังคับ dynamic rendering (ดู TASK_E_AUTH.md E3) — หน้าอ่านข้อมูล user คนเดียว ห้าม static cache
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { ChevronRightIcon, ChevronsRightIcon, ChevronsLeftIcon } from "@/components/icons";
 import { currentMonthStr, shiftMonth, thaiMonthLabel, isCurrentMonth } from "@/lib/shared/monthUtils";
