@@ -36,3 +36,8 @@ export const STORAGE_LOCATIONS = [
 export function storageLabel(value) {
   return STORAGE_LOCATIONS.find((s) => s.value === value)?.label || value;
 }
+
+// เกณฑ์ "ใกล้หมดอายุ" — เลข 3 วันตัวเดียวกับที่หน้า Home (src/lib/server/dashboard.js) และภารกิจ
+// (src/lib/server/missions.js: NEAR_EXPIRY_DAYS) ใช้อยู่แล้ว แยกมาไว้ในไฟล์ client-safe นี้ต่างหาก
+// เพราะสองไฟล์นั้น import "pg" (server-only) — ห้าม import ตรงจาก client component
+export const NEAR_EXPIRY_DAYS = 3;

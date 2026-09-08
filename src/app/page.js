@@ -5,6 +5,9 @@ import { UserIcon, MoreHorizontalIcon, ChevronRightIcon, ChefHatIcon } from "@/c
 import ResolveExpiredPopup from "@/components/ResolveExpiredPopup";
 import AddToHomeScreenPrompt from "@/components/AddToHomeScreenPrompt";
 import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getGoalForMonth, getUsedAmount } from "@/lib/server/goals";
+import { getTreeProgress } from "@/lib/server/missions";
+import { currentMonthStr } from "@/lib/shared/monthUtils";
 
 // บังคับ dynamic rendering เสมอ (ดู TASK_E_AUTH.md E3) — หน้านี้อ่านข้อมูล user คนเดียว ถ้าโดน static
 // render แล้ว cache ไว้ ข้อมูลของ anonymous user คนหนึ่งจะไปโผล่ที่ user อีกคนได้ (Supabase เตือนเรื่องนี้
@@ -13,6 +16,8 @@ export const dynamic = "force-dynamic";
 
 // สี/องค์ประกอบของหน้านี้อ้างอิงดีไซน์ Figma (node 2:5) โดยตรง — ใช้ hex ตรงตามดีไซน์
 // แทน Tailwind palette ปกติของแอป เพราะเป็นสีเฉพาะของหน้า Home หน้านี้เท่านั้น
+
+const METRIC_LABEL = { baht: "บาท", count: "ชิ้น" };
 
 function daysLabel(d) {
   if (d < 0) return `เลยมา ${-d} วัน`;
@@ -25,6 +30,23 @@ function daysLabel(d) {
 // ไม่ได้อิงจำนวนสูงสุดจริงที่เคยมี เพราะยังไม่มีข้อมูลนั้นเก็บไว้
 function stockRatio(quantity) {
   return Math.max(0.15, Math.min(quantity / 6, 1));
+}
+
+// สถานะไฟของเป้าหมาย — สูตรเดียวกับ src/components/GoalCard.js (getStatus) เป๊ะๆ เพื่อให้การ์ดในหน้า
+// Home กับหน้า /missions ตีความ % เดียวกันแล้วให้สีตรงกันเสมอ ไม่มีสูตรใหม่ที่นี่
+function goalBarColor(usedSoFar, targetValue, startDate, endDate) {
+  if (usedSoFar >= targetValue) return "#27272a"; // เกินเป้าแล้ว
+  const today = new Date(new Date().toDateString());
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const daysInMonth = Math.round((end - start) / 86400000) + 1;
+  const daysElapsed = Math.min(daysInMonth, Math.max(1, Math.round((today - start) / 86400000) + 1));
+  const percentUsed = (usedSoFar / targetValue) * 100;
+  const percentOfMonth = (daysElapsed / daysInMonth) * 100;
+  const speedRatio = percentUsed / Math.max(percentOfMonth, 1);
+  if (speedRatio <= 1) return "#16a34a"; // ตามเป้าอยู่
+  if (speedRatio < 1.2) return "#ca8a04"; // เร็วไปนิดนึง
+  return "#dc2626"; // ใช้งบเร็วกว่าที่ควร
 }
 
 // คงเหลือ 1 ชิ้น → ข้ามหน้ากลาง (/items/[name]) ไปหน้าแก้ไขของชิ้นนั้นตรงๆ เพราะ 22 จาก 24 แถวตอนนี้
@@ -71,9 +93,29 @@ export default async function Home() {
   let totalItemCount = 0;
   let expiredUnresolved = [];
   let dbError = null;
+  let goal = null; // เป้าหมายเดือนนี้ (จาก "เป้าหมายของฉัน" ที่ user ตั้งเอง — ดู src/lib/server/goals.js)
+  let goalUsedSoFar = 0;
+  let waterDrops = 0; // สะสมจากภารกิจรายวัน (ดู src/lib/server/missions.js)
   try {
     ({ nearExpiry, others, totalItemCount } = await getDashboardData(userId));
     expiredUnresolved = await getExpiredUnresolvedItems(userId);
+
+    // การ์ด "ภารกิจ" ในหน้านี้เคยเป็น static mock ("FoodWaste ต่ำกว่า 200 บาท..." ตัวเลขคงที่) — ตอนนี้
+    // ต่อกับข้อมูลจริง 2 แหล่ง: เป้าหมายรายเดือนที่ user ตั้งเอง (ถ้ายังไม่ได้ตั้ง goal จะเป็น null —
+    // การ์ดจะชวนไปตั้งแทนที่จะโชว์เลขปลอม) และจำนวนหยดน้ำสะสมจากต้นไม้/ภารกิจรายวัน
+    const monthStr = currentMonthStr();
+    const goalRow = await getGoalForMonth(userId, monthStr);
+    if (goalRow) {
+      goal = {
+        metric: goalRow.metric,
+        targetValue: Number(goalRow.target_value),
+        startDate: goalRow.start_date,
+        endDate: goalRow.end_date,
+      };
+      goalUsedSoFar = await getUsedAmount(userId, monthStr, goalRow.metric);
+    }
+    const tree = await getTreeProgress(userId);
+    waterDrops = tree.water_drops;
   } catch (err) {
     dbError = err.message;
   }
@@ -153,7 +195,9 @@ export default async function Home() {
             )}
 
             {/* ภารกิจลด FoodWaste (การ์ดซ้าย) พาไปหน้า /missions จริง (ภารกิจ 5 แบบ + ต้นไม้ ทำเสร็จแล้ว)
-                ตัวเลข/แถบ progress ในการ์ดนี้ยังเป็น static ตามดีไซน์เดิม รอต่อข้อมูลจริงทีหลัง —
+                ตอนนี้ต่อกับข้อมูลจริงแล้ว: ถ้าตั้ง "เป้าหมายของฉัน" ไว้ (src/components/GoalCard.js)
+                โชว์ % ที่ใช้ไปจริง + สีสถานะตรงกับหน้า /missions เป๊ะๆ, ถ้ายังไม่ได้ตั้งชวนไปตั้งแทน —
+                ทั้งสองแบบโชว์จำนวนหยดน้ำสะสมจากภารกิจรายวันด้วยเสมอ (independent จาก goal) —
                 แนะนำเมนู (การ์ดขวา) พาไปหน้า /recipes จริงแล้ว (ฟีเจอร์พรีเมียม เปิดฟรีในเดโม
                 ดู RECIPE_TASK.md) */}
             <div className="flex gap-2 mb-4">
@@ -161,12 +205,28 @@ export default async function Home() {
                 href="/missions"
                 className="flex-[1.6] rounded-2xl bg-[#bade97] dark:brightness-[0.4] p-4 flex flex-col justify-between h-[84px]"
               >
-                <p className="text-sm font-semibold text-black dark:text-zinc-50">
-                  FoodWaste ต่ำกว่า 200 บาท...
-                </p>
-                <div className="h-2.5 rounded-full bg-[#eafad0]/70 overflow-hidden">
-                  <div className="h-full rounded-full bg-[#a3c98a]" style={{ width: "45%" }} />
-                </div>
+                {goal ? (
+                  <>
+                    <p className="text-sm font-semibold text-black dark:text-zinc-50 truncate">
+                      ทิ้งไม่เกิน {goal.targetValue} {METRIC_LABEL[goal.metric]}เดือนนี้
+                    </p>
+                    <div className="h-2.5 rounded-full bg-[#eafad0]/70 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.min(100, Math.round((goalUsedSoFar / goal.targetValue) * 100))}%`,
+                          background: goalBarColor(goalUsedSoFar, goal.targetValue, goal.startDate, goal.endDate),
+                        }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-black dark:text-zinc-50">ยังไม่ได้ตั้งเป้าหมาย</p>
+                    <p className="text-xs text-[#3f5c2a] dark:text-zinc-300">แตะเพื่อตั้งเป้าลด FoodWaste เดือนนี้</p>
+                  </>
+                )}
+                <p className="text-[10px] text-[#3f5c2a] dark:text-zinc-400 mt-0.5">💧 {waterDrops} หยดสะสม</p>
               </Link>
               <Link
                 href="/recipes"

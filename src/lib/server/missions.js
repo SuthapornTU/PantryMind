@@ -149,4 +149,15 @@ async function bumpTree(userId) {
   );
 }
 
+
+// ===== 5) อ่านสถานะต้นไม้เฉยๆ (ไม่ ensure ภารกิจวันนี้ด้วย) — ใช้ตอนหน้า Home อยากโชว์แค่จำนวน
+// หยดน้ำสะสม โดยไม่ต้องพึ่ง /api/missions ทั้งชุด (หน้า Home ไม่ได้โชว์รายการภารกิจวันนี้อยู่แล้ว)
+export async function getTreeProgress(userId) {
+  const result = await query(
+    `SELECT level, water_drops FROM tree_progress WHERE user_id = $1`,
+    [userId]
+  );
+  return result.rows[0] || { level: 1, water_drops: 0 };
+}
+
 export { NEAR_EXPIRY_DAYS };

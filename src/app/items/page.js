@@ -3,15 +3,25 @@
 // บังคับ dynamic rendering (ดู TASK_E_AUTH.md E3) — หน้าอ่านข้อมูล user คนเดียว ห้าม static cache
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { storageLabel } from "@/lib/shared/constants";
+import { CATEGORIES, NEAR_EXPIRY_DAYS, STORAGE_LOCATIONS, storageLabel } from "@/lib/shared/constants";
 import { ChevronRightIcon } from "@/components/icons";
+
+// เกณฑ์ "ใกล้หมดอายุ" เดียวกับหน้า Home/ภารกิจ (NEAR_EXPIRY_DAYS = 3 วัน — ดู src/lib/shared/constants.js)
+// ใช้สูตรเทียบวันแบบเดียวกับ src/lib/server/dashboard.js::daysUntil (ตัดเวลาออกก่อนลบ กัน timezone
+// ทำให้ปัดวันผิด) — ไม่ได้เรียก import ตรงเพราะไฟล์นั้น import "pg" (server-only)
+function daysUntil(dateStr) {
+  const diff = new Date(dateStr) - new Date(new Date().toDateString());
+  return Math.round(diff / (1000 * 60 * 60 * 24));
+}
 
 export default function ItemsPage() {
   const [items, setItems] = useState(null); // null = กำลังโหลด
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState("ทั้งหมด"); // ปุ่มกรองหมวดหมู่ — filter ฝั่ง client ล้วนๆ ไม่ยิง API ซ้ำ
+  const [storageFilter, setStorageFilter] = useState("ทั้งหมด"); // ตัวกรองที่เก็บ — เหมือนกัน (client-side, มีตัวเลือก "ทั้งหมด" รวมทุกที่เก็บ)
 
   async function load() {
     setError(null);
@@ -61,6 +71,23 @@ export default function ItemsPage() {
     }
   }
 
+  // รายการหมวดหมู่ที่มีของอยู่จริงเท่านั้น (ไม่โชว์ปุ่มกรองหมวดที่ตู้เย็นไม่มีของเลย) — เรียงตาม
+  // ลำดับเดิมใน CATEGORIES เสมอ ไม่เรียงตามความถี่ เพื่อให้ตำแหน่งปุ่มไม่เปลี่ยนไปมาเวลาข้อมูลเปลี่ยน
+  const categoriesPresent = useMemo(() => {
+    if (!items) return [];
+    const present = new Set(items.map((i) => i.category));
+    return CATEGORIES.filter((c) => present.has(c));
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (!items) return [];
+    return items.filter(
+      (i) =>
+        (categoryFilter === "ทั้งหมด" || i.category === categoryFilter) &&
+        (storageFilter === "ทั้งหมด" || i.storage_location === storageFilter)
+    );
+  }, [items, categoryFilter, storageFilter]);
+
   return (
     <div className="pb-28">
       {/* Header สไตล์หน้าย่อย: ลูกศรย้อนกลับ + ชื่อหน้า */}
@@ -91,38 +118,84 @@ export default function ItemsPage() {
             </Link>
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-3 rounded-xl bg-white dark:bg-zinc-800 shadow-sm p-3"
+          <>
+            {/* ตัวกรองที่เก็บ (dropdown) + ปุ่มกรองหมวดหมู่ — filter ง่ายๆ ฝั่ง client ทั้งคู่ ไม่กระทบ
+                query/backend เลย — ตัวกรองที่เก็บมีตัวเลือก "ทั้งหมด" ไว้ดูของทุกที่เก็บรวมกันเสมอ */}
+            <div className="flex gap-2 overflow-x-auto pb-1 mb-3 -mx-1 px-1">
+              <select
+                value={storageFilter}
+                onChange={(e) => setStorageFilter(e.target.value)}
+                className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border-none bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
               >
-                <div className="min-w-0">
-                  <p className="font-medium text-zinc-900 dark:text-zinc-50 truncate">{item.name}</p>
-                  <p className="text-xs text-zinc-400">
-                    {item.category} · {storageLabel(item.storage_location)} · จำนวน {item.quantity} ·
-                    หมดอายุ {new Date(item.expiry_date).toLocaleDateString("th-TH")}
-                  </p>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => markUsed(item.id)}
-                    disabled={busyId === item.id}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-50"
-                  >
-                    ใช้แล้ว
-                  </button>
-                  <button
-                    onClick={() => remove(item.id)}
-                    disabled={busyId === item.id}
-                    className="text-xs px-2.5 py-1.5 rounded-full bg-zinc-100 text-zinc-500 hover:bg-zinc-200 disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-300"
-                  >
-                    ลบ
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                <option value="ทั้งหมด">ทุกที่เก็บ</option>
+                {STORAGE_LOCATIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+              {["ทั้งหมด", ...categoriesPresent].map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategoryFilter(c)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap ${
+                    categoryFilter === c
+                      ? "bg-rose-500 text-white border-rose-500"
+                      : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            {filteredItems.length === 0 ? (
+              <p className="text-zinc-400 text-sm">ไม่มีของตรงกับตัวกรองนี้</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {filteredItems.map((item) => {
+                  // ใกล้หมดอายุ (≤ NEAR_EXPIRY_DAYS วัน รวมที่เลยมาแล้วด้วย) → กรอบแดงเด่นขึ้นมา
+                  // ตามที่ user ขอ (อิงดีไซน์เดียวกับที่การ์ดสีชมพูในหน้า Home ใช้เตือนอยู่แล้ว)
+                  const isNearExpiry = daysUntil(item.expiry_date) <= NEAR_EXPIRY_DAYS;
+                  return (
+                    <li
+                      key={item.id}
+                      className={`flex items-center justify-between gap-3 rounded-xl bg-white dark:bg-zinc-800 shadow-sm p-3 ${
+                        isNearExpiry
+                          ? "border-2 border-rose-400 dark:border-rose-600"
+                          : "border border-transparent"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-zinc-900 dark:text-zinc-50 truncate">{item.name}</p>
+                        <p className="text-xs text-zinc-400">
+                          {item.category} · {storageLabel(item.storage_location)} · จำนวน {item.quantity} ·
+                          หมดอายุ {new Date(item.expiry_date).toLocaleDateString("th-TH")}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => markUsed(item.id)}
+                          disabled={busyId === item.id}
+                          className="text-xs px-2.5 py-1.5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-50"
+                        >
+                          ใช้แล้ว
+                        </button>
+                        <button
+                          onClick={() => remove(item.id)}
+                          disabled={busyId === item.id}
+                          className="text-xs px-2.5 py-1.5 rounded-full bg-zinc-100 text-zinc-500 hover:bg-zinc-200 disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-300"
+                        >
+                          ลบ
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         )}
       </div>
     </div>

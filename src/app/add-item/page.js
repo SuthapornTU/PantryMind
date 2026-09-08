@@ -55,23 +55,32 @@ function AddItemForm() {
   const [formError, setFormError] = useState(null);
   const debounceRef = useRef(null);
 
-  // ค้นหา autocomplete ตอนพิมพ์ชื่อ (debounce 300ms)
+  // ค้นหา autocomplete ตอนพิมพ์ชื่อ — debounce เหลือ 150ms (จาก 300ms เดิม รู้สึกหน่วงตอนพิมพ์เร็วๆ)
+  // + ยกเลิก request เก่าด้วย AbortController ทุกครั้งที่พิมพ์ตัวถัดไป กัน response ที่มาช้า (เช่น
+  // ตอบช้ากว่า request ถัดไปเพราะ network jitter) ย้อนมาทับผลลัพธ์ใหม่กว่าที่แสดงอยู่แล้ว — ไม่งั้น
+  // ดรอปดาวน์จะกระพริบ/ค้างโชว์ผลเก่าเป็นพักๆ ระหว่างพิมพ์ ดูเหมือนช้าทั้งที่ query จริงไม่ได้ช้าขนาดนั้น
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!name.trim()) {
       setSuggestions([]);
       return;
     }
+    const controller = new AbortController();
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/food-reference?q=${encodeURIComponent(name.trim())}`);
+        const res = await fetch(`/api/food-reference?q=${encodeURIComponent(name.trim())}`, {
+          signal: controller.signal,
+        });
         const data = await res.json();
         setSuggestions(data.items || []);
-      } catch {
-        setSuggestions([]);
+      } catch (err) {
+        if (err.name !== "AbortError") setSuggestions([]);
       }
-    }, 300);
-    return () => clearTimeout(debounceRef.current);
+    }, 150);
+    return () => {
+      clearTimeout(debounceRef.current);
+      controller.abort();
+    };
   }, [name]);
 
   // เรียก lookupExpiry ครั้งเดียวตอน mount ถ้าชื่อมาจาก query param (เช่นจาก /add-item/camera

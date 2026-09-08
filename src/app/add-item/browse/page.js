@@ -30,24 +30,34 @@ export default function BrowseAddItemPage() {
   const [error, setError] = useState(null);
   const debounceRef = useRef(null);
 
-  // โหลดลิสต์เต็ม (ไม่มี q) ตอนเปิดหน้า แล้ว debounce เรียกซ้ำพร้อม q ทุกครั้งที่พิมพ์ (300ms)
-  // — pattern เดียวกับ autocomplete ใน src/app/add-item/page.js
+  // โหลดลิสต์เต็ม (ไม่มี q) ตอนเปิดหน้า แล้ว debounce เรียกซ้ำพร้อม q ทุกครั้งที่พิมพ์
+  // — debounce เหลือ 150ms (จาก 300ms) + ยกเลิก request เก่าด้วย AbortController กัน response ช้า
+  // ย้อนมาทับผลใหม่กว่า (pattern เดียวกับที่แก้ใน src/app/add-item/page.js — แก้ปัญหาดรอปดาวน์
+  // แอบช้า/ค้างตอนพิมพ์เร็วๆ)
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const controller = new AbortController();
     debounceRef.current = setTimeout(async () => {
       try {
         const q = query.trim();
-        const res = await fetch(`/api/food-reference${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+        const res = await fetch(`/api/food-reference${q ? `?q=${encodeURIComponent(q)}` : ""}`, {
+          signal: controller.signal,
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "โหลดรายการไม่สำเร็จ");
         setItems(data.items || []);
         setError(null);
       } catch (err) {
-        setError(err.message);
-        setItems([]);
+        if (err.name !== "AbortError") {
+          setError(err.message);
+          setItems([]);
+        }
       }
-    }, 300);
-    return () => clearTimeout(debounceRef.current);
+    }, 150);
+    return () => {
+      clearTimeout(debounceRef.current);
+      controller.abort();
+    };
   }, [query]);
 
   function goToAddItem(name, category) {

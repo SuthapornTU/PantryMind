@@ -196,3 +196,13 @@ export function FridgeIcon({ className }) {
     </Svg>
   );
 }
+
+export function ImageIcon({ className }) {
+  return (
+    <Svg className={className}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </Svg>
+  );
+}

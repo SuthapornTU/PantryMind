@@ -11,7 +11,7 @@
 // sourceShoppingId (ถ้ามี) = id ของแถวใน shopping_list ที่ item นี้มาจาก ใช้ตอนบันทึกสำเร็จแล้ว
 // ให้ผู้เรียก (src/app/shopping/page.js) รู้ว่าจะลบแถวไหนออกจาก shopping_list ได้บ้าง (ดู C3)
 import { useState } from "react";
-import { STORAGE_LOCATIONS } from "@/lib/shared/constants";
+import { CATEGORIES, STORAGE_LOCATIONS } from "@/lib/shared/constants";
 
 function toISODate(daysFromToday) {
   const d = new Date();
@@ -151,9 +151,23 @@ export default function ReceiptReviewForm({ items: initialItems, note, onConfirm
                   onChange={(e) => updateItem(item.id, { name: e.target.value })}
                   className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-medium"
                 />
-                <span className="inline-block mt-1.5 text-xs font-medium rounded-full px-2 py-0.5 bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                  {item.category}
-                </span>
+                {/* หมวดหมู่ — ระบบเดาให้อัตโนมัติจากการสแกน (AI/บาร์โค้ด) แต่ user เปลี่ยนเองได้เสมอ
+                    เหมือน field อื่นๆ ในการ์ดนี้ (ชื่อ/ที่เก็บ/วันหมดอายุ) — ยังเป็น dropdown ธรรมดา
+                    ไม่มีจุดไหนบันทึกอัตโนมัติ ต้องผ่านปุ่ม "ยืนยันเพิ่มทั้งหมด" เหมือนเดิม */}
+                <select
+                  value={item.category}
+                  onChange={(e) => updateItem(item.id, { category: e.target.value })}
+                  className="inline-block mt-1.5 w-fit text-xs font-medium rounded-full pl-2.5 pr-1.5 py-0.5 bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-none"
+                >
+                  {!CATEGORIES.includes(item.category) && (
+                    <option value={item.category}>{item.category}</option>
+                  )}
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
