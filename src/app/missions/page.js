@@ -2,9 +2,13 @@
 
 // หน้าภารกิจ + ต้นไม้ — fetch /api/missions (ensure ภารกิจวันนี้ + คืนภารกิจ 5 แบบ + สถานะต้นไม้)
 // ทุกอย่างเป็น rule-based (SQL/arithmetic) ฝั่ง backend อยู่แล้ว หน้านี้แค่ render ผลลัพธ์
+// บังคับ dynamic rendering (ดู TASK_E_AUTH.md E3) — หน้าอ่านข้อมูล user คนเดียว ห้าม static cache
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRightIcon, LeafIcon } from "@/components/icons";
+import GoalCard from "@/components/GoalCard";
 
 const DROPS_PER_LEVEL = 6; // ตรงกับ src/lib/missions.js (level up ทุก 6 หยด)
 
@@ -67,6 +71,10 @@ export default function MissionsPage() {
           <p className="text-sm text-zinc-400 text-center py-8">กำลังโหลด...</p>
         ) : (
           <>
+            {/* เป้าหมายของฉัน — ใหม่ (รายเดือน ผู้ใช้ตั้งเอง) อยู่บนสุด เหนือภารกิจวันนี้/ต้นไม้เดิม
+                ตาม TASK_D_GOALS.md D5 (ไม่แตะ logic ภารกิจ/ต้นไม้เดิมด้านล่างเลย) */}
+            <GoalCard />
+
             {/* ต้นไม้ */}
             <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 p-4 flex items-center gap-4 mb-5">
               <span className="text-5xl leading-none">{treeEmoji(data.tree.level)}</span>
