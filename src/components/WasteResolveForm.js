@@ -4,24 +4,30 @@
 // 🗑 ทิ้ง ในหน้ากลุ่ม /items/[name] (ดู B4 ใน TASK_B_UI.md — เขียนใหม่ทั้งหมด แทนของเดิมที่ถาม
 // แค่ wasteFraction เดียวของทั้งแถว ไม่รองรับแถวที่ quantity > 1 ทีละชิ้น)
 //
-// คำถามคือ "ใช้ไปเท่าไหร่" ไม่ใช่ "เหลือเท่าไหร่" (เก็บคำเดิม) — ทิ้งไป = จำนวนคงเหลือ − ผลรวม
-// สัดส่วนที่ใช้ไป ของแต่ละชิ้น ก็คือผลรวม wasteFraction ของแต่ละชิ้นนั่นเอง (waste = 1 - used ต่อชิ้น)
+// คำถามต่อชิ้นคือ "เหลือเท่าไหร่" (ง่ายกว่าให้ user นึกภาพส่วนที่เหลือจริงตรงหน้า) — ทิ้งไป = ผลรวม
+// wasteFraction ของแต่ละชิ้นนั่นเอง เพราะ wasteFraction ต่อชิ้นถูกกำหนดให้ = สัดส่วนที่ "เหลือ" อยู่แล้ว
+// (usedPercent 0 = เหลือเต็มชิ้น = wasteFraction 1, usedPercent 1 = ไม่เหลือเลย = wasteFraction 0)
 // ส่ง wastedUnits (ตัวเลขจำนวนชิ้น) ไป /api/items/[id]/resolve ไม่ใช่ wasteFraction แบบเดิม
 import { useState } from "react";
 import { WASTE_REASON_CATEGORIES } from "@/lib/shared/constants";
 
-// ตัวเลือกสัดส่วน "ใช้ไปแล้วก่อนทิ้ง" ต่อชิ้น — 5 สถานะ (ของเดิมใน ResolveExpiredPopup มีแค่ 4 ตัวแรก
-// เพราะแถวเดิมมี quantity=1 เสมอ ที่นี่เพิ่ม "ใช้หมดแล้ว ไม่เสีย" (waste=0) เพราะทีละชิ้นอาจใช้ครบได้จริง)
+// ตัวเลือกสัดส่วน "เหลือเท่าไหร่ก่อนทิ้ง" ต่อชิ้น — 5 สถานะ (ของเดิมใน ResolveExpiredPopup มีแค่ 4
+// ตัวแรก เพราะแถวเดิมมี quantity=1 เสมอ ที่นี่เพิ่ม "ไม่เหลือเลย" (waste=0) เพราะทีละชิ้นอาจใช้ครบได้จริง)
+// หมายเหตุ: label เป็นมุมมอง "เหลือเท่าไหร่" (ง่ายกว่าให้ user นึกภาพ) แต่ usedPercent/wasteFraction
+// ยังเป็นค่าเดิมทุกตัว (ห้ามสลับลำดับ/ค่า เพราะ index ผูกกับ usedPercent ที่ FractionCircle ใช้วาดอยู่)
 const PIECE_FRACTION_OPTIONS = [
-  { usedPercent: 0, wasteFraction: 1, label: "ยังไม่ได้ใช้เลย" },
-  { usedPercent: 0.25, wasteFraction: 0.75, label: "ใช้ไปนิดหน่อย" },
-  { usedPercent: 0.5, wasteFraction: 0.5, label: "ใช้ไปครึ่งนึง" },
-  { usedPercent: 0.75, wasteFraction: 0.25, label: "ใช้ไปเกือบหมด" },
-  { usedPercent: 1, wasteFraction: 0, label: "ใช้หมดแล้ว ไม่เสีย" },
+  { usedPercent: 0, wasteFraction: 1, label: "เหลือเต็มชิ้น" },
+  { usedPercent: 0.25, wasteFraction: 0.75, label: "เหลือเกือบเต็ม" },
+  { usedPercent: 0.5, wasteFraction: 0.5, label: "เหลือครึ่งนึง" },
+  { usedPercent: 0.75, wasteFraction: 0.25, label: "เหลือนิดหน่อย" },
+  { usedPercent: 1, wasteFraction: 0, label: "ไม่เหลือเลย" },
 ];
 
 const QUICK_REASONS = WASTE_REASON_CATEGORIES.filter((c) => c !== "อื่นๆ"); // "อื่นๆ" ไม่มีปุ่มลัด — ต้องพิมพ์เอง
 
+// ใช้ CSS variable ที่ Tailwind v4 เจนให้อัตโนมัติจาก palette (--color-rose-400/--color-zinc-200)
+// แทน hex hardcode เดิม (#f43f5e/#e5e7eb) — conic-gradient เป็นฟังก์ชัน CSS ดิบ ใส่ Tailwind class
+// ตรงๆ ไม่ได้ เลยต้องอ้างผ่าน var() ใน inline style แต่ยังคงสีให้ตรง palette ที่เหลือของฟอร์มนี้อยู่
 export function FractionCircle({ usedPercent, active }) {
   const deg = usedPercent * 360;
   return (
@@ -29,31 +35,32 @@ export function FractionCircle({ usedPercent, active }) {
       className={`w-9 h-9 rounded-full border-2 shrink-0 ${
         active ? "border-rose-500 ring-2 ring-rose-200" : "border-zinc-200"
       }`}
-      style={{ background: `conic-gradient(#f43f5e ${deg}deg, #e5e7eb ${deg}deg)` }}
+      style={{
+        background: `conic-gradient(var(--color-rose-400) ${deg}deg, var(--color-zinc-200) ${deg}deg)`,
+      }}
     />
   );
 }
 
-// เส้นทีละชิ้น — โหมดย่อ (แถวจุดเล็กๆ 5 จุด) กดแล้วขยายเป็นวงกลม+คำ (ของเดิมใน ResolveExpiredPopup)
+// เส้นทีละชิ้น — โหมดย่อ (หลอดเติมพลัง 1 เส้น ความกว้างส่วนเติม = สัดส่วนที่เหลือของชิ้นนั้น) กดแล้ว
+// ขยายเป็นวงกลม+คำ (ของเดิมใน ResolveExpiredPopup) — โครง track+fill 2 เลเยอร์แบบเดียวกับแถบระดับของ
+// ในการ์ดหน้าแรก (src/app/page.js, stockRatio) ปรับสีให้เข้าโทน rose ของฟอร์มนี้แทน
 function PieceLine({ wasteFraction, onChange }) {
   const [expanded, setExpanded] = useState(false);
-  const activeIndex = PIECE_FRACTION_OPTIONS.findIndex((o) => o.wasteFraction === wasteFraction);
 
   if (!expanded) {
     return (
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="flex items-center gap-1.5 w-full py-1"
+        className="flex items-center w-full py-1.5"
       >
-        {PIECE_FRACTION_OPTIONS.map((o, i) => (
-          <span
-            key={o.wasteFraction}
-            className={`h-2.5 rounded-full flex-1 ${
-              i === activeIndex ? "bg-rose-500" : "bg-zinc-200 dark:bg-zinc-700"
-            }`}
+        <div className="w-full h-2.5 rounded-full bg-rose-100 dark:bg-rose-950/40 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-rose-400"
+            style={{ width: `${wasteFraction * 100}%` }}
           />
-        ))}
+        </div>
       </button>
     );
   }
@@ -205,7 +212,7 @@ export default function WasteResolveForm({ item, onDone, onCancel }) {
       {pieceCount > 0 && (
         <div>
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-            อีก {pieceCount} ชิ้น — ใช้ไปเท่าไหร่?
+            อีก {pieceCount} ชิ้น — เหลือเท่าไหร่?
           </p>
           <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-700">
             {visiblePieces.map((fraction, i) => (

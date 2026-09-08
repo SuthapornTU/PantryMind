@@ -5,10 +5,20 @@
 // "ใช้แล้ว" เรียก endpoint เดิม PATCH /api/items/[id] (action: "used") ไม่เขียน logic ใหม่
 // "ปล่อยให้เสีย" ใช้ WasteResolveForm (component เดียวกับปุ่ม 🗑 ในหน้ากลุ่ม /items/[name] — ดู B4
 // ใน TASK_B_UI.md ที่บอกให้ทำเป็น component เดียวใช้ร่วมกัน ไม่ใช่เขียนฟอร์ม fraction/เหตุผลซ้ำที่นี่)
+//
+// src/app/page.js เป็น async server component ดึงข้อมูลครั้งเดียวตอน render แล้วส่ง items เข้ามาทาง
+// prop — ถ้าไม่บอก Next ให้ re-fetch server component นี้ใหม่ การ์ด/badge หน้าแรกจะค้างข้อมูลเก่าแม้
+// DB จะอัปเดตถูกแล้ว (เพราะ props เดิมจาก render รอบก่อนยังอยู่) goToNext() คือจุดเดียวที่ทั้ง markUsed
+// และ WasteResolveForm (ผ่าน onDone) เรียกหลังบันทึกสำเร็จ เลยเรียก router.refresh() ที่นี่ที่เดียว
+// ครอบคลุมทั้ง 2 เส้นทาง — ไม่ใส่ใน WasteResolveForm.handleSubmit() ตรงๆ เพราะ component นั้นถูกใช้ซ้ำ
+// ที่หน้า /items/[name] ด้วย ซึ่งมี onDone ของตัวเองที่เรียก load() (client-side fetch) อยู่แล้ว ถ้าใส่
+// router.refresh() ในนั้นด้วยจะยิงซ้ำซ้อนโดยไม่จำเป็น
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import WasteResolveForm from "./WasteResolveForm";
 
 export default function ResolveExpiredPopup({ items }) {
+  const router = useRouter();
   const [queue, setQueue] = useState(items || []);
   const [step, setStep] = useState("choice"); // "choice" | "waste-detail"
   const [busy, setBusy] = useState(false);
@@ -21,6 +31,7 @@ export default function ResolveExpiredPopup({ items }) {
     setQueue((prev) => prev.slice(1));
     setStep("choice");
     setError(null);
+    router.refresh(); // ให้ src/app/page.js (server component) ดึงข้อมูลใหม่ การ์ด/badge จะได้ตรงกับ DB จริง
   }
 
   async function markUsed() {

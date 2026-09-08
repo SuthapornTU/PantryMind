@@ -58,7 +58,7 @@ export async function POST(req, { params }) {
   try {
     const item = await withTransaction(async (client) => {
       const rowResult = await client.query(
-        `SELECT id, name, quantity, used_count, wasted_count
+        `SELECT id, name, quantity, used_count, wasted_count, (expiry_date < CURRENT_DATE) AS is_expired
          FROM pantry_items WHERE id = $1 AND user_id = $2 AND used_at IS NULL FOR UPDATE`,
         [id, userId]
       );
@@ -80,16 +80,31 @@ export async function POST(req, { params }) {
         throw new ClientError("wastedUnits เกินจำนวนคงเหลือของแถวนี้", 400);
       }
 
-      const newWastedCount = oldWastedCount + wastedUnits;
-      const finalRemaining = quantity - newUsedCount - newWastedCount;
+      let finalWastedCount = oldWastedCount + wastedUnits;
+      let finalRemaining = quantity - newUsedCount - finalWastedCount;
+
+      // ของที่หมดอายุไปแล้วจริง (expiry_date < CURRENT_DATE) ไม่มี state "เปิดใช้ต่อ" ที่สมเหตุสมผล
+      // อีกแล้ว — เศษที่เหลือจากการตอบทีละชิ้นแบบไม่เต็ม (เช่น ตอบรวมได้ 4.75 จาก 5 ชิ้น เพราะมีชิ้น
+      // เดียวที่ตอบแบบ partial) ต้องถูกนับรวมเป็น "ทิ้งไปด้วย" ทันที ไม่งั้น finalRemaining จะไม่เป็น 0
+      // used_at เลยไม่ถูกเซ็ต แถวเลยยังโผล่ซ้ำใน getExpiredUnresolvedItems() ทั้งที่ user กด "ยืนยัน"
+      // ไปแล้ว (เก็บเป็น open_fraction ได้เฉพาะของที่ "ยังไม่หมดอายุ" เท่านั้น — ดู 🗑 ใน B2/TASK_B_UI.md
+      // ที่ใช้ resolve ทิ้งของก่อนหมดอายุตั้งใจ กรณีนั้นยังมี state เปิดใช้ต่อที่สมเหตุสมผลอยู่จริง)
+      let extraWastedFromExpiredLeftover = 0;
+      if (row.is_expired && finalRemaining > REMAINING_EPSILON) {
+        extraWastedFromExpiredLeftover = finalRemaining;
+        finalWastedCount += extraWastedFromExpiredLeftover;
+        finalRemaining = 0;
+      }
+
       const isFullyResolved = finalRemaining <= REMAINING_EPSILON;
       // เศษที่เหลือหลังปัดนี้คือ "ชิ้นที่กำลังเปิดใช้อยู่" (ดูนิยาม open_fraction ใน TASK_A_DATA.md A1)
-      // สัดส่วนที่ "ใช้ไปแล้ว" ของชิ้นนั้น = 1 − เศษที่เหลือ (เศษ 0.4 คงเหลือ = ใช้ไปแล้ว 60%)
+      // สัดส่วนที่ "ใช้ไปแล้ว" ของชิ้นนั้น = 1 − เศษที่เหลือ (เศษ 0.4 คงเหลือ = ใช้ไปแล้ว 60%) — เกิดได้
+      // เฉพาะของที่ยังไม่หมดอายุเท่านั้น (ของหมดอายุถูกพับเข้า wasted_count ไปหมดแล้วด้านบน)
       const fractionalRemainder = isFullyResolved ? 0 : finalRemaining - Math.floor(finalRemaining);
       const newOpenFraction = !isFullyResolved && fractionalRemainder > REMAINING_EPSILON ? 1 - fractionalRemainder : null;
 
       const sets = ["used_count = $1", "wasted_count = $2", "open_fraction = $3"];
-      const values = [newUsedCount, newWastedCount, newOpenFraction];
+      const values = [newUsedCount, finalWastedCount, newOpenFraction];
       if (isFullyResolved) sets.push("used_at = now()");
       if (pricePerUnitInput !== null) {
         values.push(pricePerUnitInput);
@@ -106,11 +121,14 @@ export async function POST(req, { params }) {
 
       // บันทึก event เฉพาะตอนมีอะไรถูก "ทิ้งจริง" รอบนี้ (wastedUnits > 0) — ถ้าผู้ใช้เลื่อนตัวนับ
       // "กินหมดไปแล้ว" อย่างเดียวโดยไม่มีการทิ้งอะไรเลย ไม่ควรมี item_events(expired_unwanted) ว่างๆ
-      if (wastedUnits > 0) {
+      // รวมเศษที่พับเข้ามาจากของหมดอายุ (extraWastedFromExpiredLeftover) เข้าไปด้วย ไม่งั้นเงินส่วนนั้น
+      // จะหายจากสถิติเงียบๆ ทั้งที่ตอนนี้แถวถูกปิดเป็น "ทิ้งแล้ว" เต็มจำนวนจริง
+      const totalWastedThisRound = wastedUnits + extraWastedFromExpiredLeftover;
+      if (totalWastedThisRound > 0) {
         await client.query(
           `INSERT INTO item_events (user_id, item_id, item_name, event_type, wasted_units, waste_reason_category, waste_reason_text)
            VALUES ($1, $2, $3, 'expired_unwanted', $4, $5, $6)`,
-          [userId, row.id, row.name, wastedUnits, wasteReasonCategory, wasteReasonText?.trim() || null]
+          [userId, row.id, row.name, totalWastedThisRound, wasteReasonCategory, wasteReasonText?.trim() || null]
         );
       }
 

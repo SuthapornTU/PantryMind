@@ -59,6 +59,11 @@ export default function GroupPage() {
   const [error, setError] = useState(null);
   const [busyRowId, setBusyRowId] = useState(null);
   const [wasteRowId, setWasteRowId] = useState(null); // แถวที่กำลังเปิด WasteResolveForm อยู่
+  // ชิ้นที่ติ๊กเลือกไว้ (ยังไม่ส่ง API) — key ตรงกับ p.key จาก expandToPieces ด้านล่าง
+  const [selected, setSelected] = useState(() => new Set());
+  // โหมดตัวนับ (>12 ชิ้น ไม่มีเช็คบ็อกซ์รายชิ้น) — "เลือกทั้งหมดว่ากินแล้ว" แค่ตั้ง flag นี้ไว้ก่อน
+  // (client-side เท่านั้น) ต้องกดปุ่ม "ยืนยัน" แยกต่างหากถึงจะยิง API จริง เหมือนโหมดลิสต์ทีละชิ้น
+  const [allUsedPending, setAllUsedPending] = useState(false);
 
   async function load() {
     setError(null);
@@ -67,6 +72,8 @@ export default function GroupPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "โหลดรายการไม่สำเร็จ");
       setRows(data.rows);
+      setSelected(new Set()); // รีเฟรชข้อมูลใหม่ ชิ้นเดิมที่เคยติ๊กอาจไม่ตรงกับ key ใหม่แล้ว ล้างทิ้ง
+      setAllUsedPending(false);
       if (data.rows.length === 0) router.replace("/");
     } catch (err) {
       setError(err.message);
@@ -95,9 +102,18 @@ export default function GroupPage() {
     }
   }
 
-  // "เลือกทั้งหมดว่ากินแล้ว" = การกระทำเดียวกับปุ่ม "ใช้แล้ว" เดิม เรียกทุกแถวในกลุ่ม (logic เดิม
-  // PATCH action:"used" ต่อแถว ไม่เขียนใหม่ — ดู B2 ใน TASK_B_UI.md)
-  async function markAllUsed() {
+  // ใช้เฉพาะโหมดตัวนับ (เกิน 12 ชิ้น ไม่มีให้ติ๊กทีละชิ้น) — กดปุ่มแค่ตั้ง flag ไว้ก่อน (client-side
+  // เท่านั้น) ไม่ยิง API และไม่พาออกจากหน้าตรงนี้เด็ดขาด ต้องกดปุ่ม "ยืนยัน" แยกต่างหากถึงจะส่งจริง
+  function selectAllCounter() {
+    setAllUsedPending(true);
+  }
+
+  function cancelAllCounter() {
+    setAllUsedPending(false);
+  }
+
+  // กด "ยืนยัน" ถึงจะยิง API จริง — เคลียร์ทุกแถวของกลุ่มนี้เป็น used ทีเดียว
+  async function confirmAllUsed() {
     if (!confirm(`ยืนยันว่ากิน${name}ทั้งหมดหมดแล้วใช่ไหม?`)) return;
     setBusyRowId("__all__");
     try {
@@ -111,6 +127,55 @@ export default function GroupPage() {
         )
       );
       router.push("/");
+    } catch (err) {
+      alert(err.message || "บันทึกไม่สำเร็จ");
+      setAllUsedPending(false);
+    } finally {
+      setBusyRowId(null);
+    }
+  }
+
+  // "เลือกทั้งหมดว่ากินแล้ว" ในโหมดลิสต์ทีละชิ้น — แค่ติ๊กทุกช่องไว้ล่วงหน้า (client-side เท่านั้น)
+  // ไม่ยิง API และไม่ลบอะไรออกจากหน้าจอตรงนี้เด็ดขาด ต้องกดปุ่ม "ยืนยัน" แยกต่างหากถึงจะส่งจริง
+  function selectAllPieces() {
+    setSelected(new Set(pieces.map((p) => p.key)));
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  function togglePieceSelected(key) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  // กด "ยืนยัน" ถึงจะยิง API จริง — นับจำนวนชิ้นที่ติ๊กไว้ต่อแถว แล้วเรียก consume_one ทีละชิ้นต่อแถว
+  // (endpoint เดิมจาก B5 ไม่ต้องเขียนใหม่) ยิงพร้อมกันได้ปลอดภัยเพราะ consume_one เป็น atomic UPDATE
+  // เดียวต่อคำขอ (used_count = used_count + 1 ในคำสั่งเดียว) ไม่มี race condition แม้ยิงซ้อนแถวเดียวกัน
+  async function confirmSelected() {
+    if (selected.size === 0) return;
+    if (!confirm(`ยืนยันว่ากิน${name} ${selected.size} ชิ้นแล้วใช่ไหม?`)) return;
+    setBusyRowId("__all__");
+    try {
+      const targets = pieces.filter((p) => selected.has(p.key));
+      const responses = await Promise.all(
+        targets.map((p) =>
+          fetch(`/api/items/${p.rowId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "consume_one" }),
+          })
+        )
+      );
+      for (const res of responses) {
+        if (!res.ok) throw new Error((await res.json()).error || "บันทึกไม่สำเร็จ");
+      }
+      await load();
     } catch (err) {
       alert(err.message || "บันทึกไม่สำเร็จ");
     } finally {
@@ -151,14 +216,25 @@ export default function GroupPage() {
       <div className="px-4">
         {error && <p className="text-sm text-rose-600 mb-3">{error}</p>}
 
-        <button
-          type="button"
-          onClick={markAllUsed}
-          disabled={busyRowId === "__all__"}
-          className="w-full mb-4 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-50 py-2.5 text-sm font-medium"
-        >
-          เลือกทั้งหมดว่ากินแล้ว
-        </button>
+        {useCounterView ? (
+          <button
+            type="button"
+            onClick={selectAllCounter}
+            disabled={busyRowId === "__all__" || allUsedPending}
+            className="w-full mb-4 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-50 py-2.5 text-sm font-medium"
+          >
+            เลือกทั้งหมดว่ากินแล้ว
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={selectAllPieces}
+            disabled={busyRowId === "__all__"}
+            className="w-full mb-4 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 disabled:opacity-50 py-2.5 text-sm font-medium"
+          >
+            เลือกทั้งหมดว่ากินแล้ว
+          </button>
+        )}
 
         {useCounterView ? (
           <div className="rounded-2xl bg-white dark:bg-zinc-800 shadow-sm p-4 flex flex-col items-center gap-2">
@@ -185,7 +261,32 @@ export default function GroupPage() {
             </div>
             <p className="text-xs text-zinc-400">{daysLabel(earliestRowWithStock.expiry_date)}ที่สุด</p>
           </div>
-        ) : (
+        ) : null}
+
+        {/* ปุ่มยืนยัน (โหมดตัวนับ) — ยิง API จริงตอนนี้เท่านั้น (ดูฟังก์ชัน confirmAllUsed ด้านบน)
+            โผล่เฉพาะหลังกด "เลือกทั้งหมดว่ากินแล้ว" ไปแล้ว */}
+        {useCounterView && allUsedPending && (
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              type="button"
+              onClick={cancelAllCounter}
+              disabled={busyRowId === "__all__"}
+              className="rounded-full border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300 disabled:opacity-50 px-4 py-2.5 text-sm font-medium"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={confirmAllUsed}
+              disabled={busyRowId === "__all__"}
+              className="flex-1 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-2.5 text-sm font-medium"
+            >
+              {busyRowId === "__all__" ? "กำลังบันทึก..." : `ยืนยันว่ากินแล้วทั้งหมด ${totalRemaining} ชิ้น`}
+            </button>
+          </div>
+        )}
+
+        {!useCounterView && (
           <>
             <ul className="flex flex-col gap-2">
               {pieces.map((p) => {
@@ -195,12 +296,19 @@ export default function GroupPage() {
                     key={p.key}
                     className="flex items-center gap-3 rounded-xl bg-white dark:bg-zinc-800 shadow-sm p-3"
                   >
+                    <input
+                      type="checkbox"
+                      aria-label={`เลือก ${name} ชิ้นนี้`}
+                      checked={selected.has(p.key)}
+                      onChange={() => togglePieceSelected(p.key)}
+                      className="w-4 h-4 accent-emerald-600 shrink-0"
+                    />
                     <button
                       type="button"
                       onClick={() => router.push(`/add-item?id=${p.rowId}`)}
                       className="flex-1 min-w-0 flex items-center gap-2 text-left"
                     >
-                      <span className="text-lg shrink-0">{hasOpenBadge ? "◐" : "☐"}</span>
+                      {hasOpenBadge && <span className="text-lg shrink-0">◐</span>}
                       <span className="min-w-0">
                         <span className="block font-medium text-zinc-900 dark:text-zinc-50 truncate">
                           {name}
@@ -237,6 +345,29 @@ export default function GroupPage() {
                 );
               })}
             </ul>
+
+            {/* ปุ่มยืนยัน — ยิง API จริงตอนนี้เท่านั้น (ดูฟังก์ชัน confirmSelected ด้านบน) โผล่เฉพาะ
+                ตอนมีชิ้นที่ติ๊กไว้อย่างน้อย 1 ชิ้น */}
+            {selected.size > 0 && (
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  disabled={busyRowId === "__all__"}
+                  className="rounded-full border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300 disabled:opacity-50 px-4 py-2.5 text-sm font-medium"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmSelected}
+                  disabled={busyRowId === "__all__"}
+                  className="flex-1 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-2.5 text-sm font-medium"
+                >
+                  {busyRowId === "__all__" ? "กำลังบันทึก..." : `ยืนยันว่ากินแล้ว ${selected.size} ชิ้น`}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
