@@ -1,15 +1,22 @@
 // /api/items — CRUD หลักของ pantry_items
 // GET  -> รายการของที่ยังอยู่ในตู้ (used_at IS NULL) เรียงตามวันหมดอายุ
 // POST -> เพิ่มของใหม่ + insert item_events(added) + เขียนกลับ food_reference ถ้าเป็น Path B
+//
+// user_id มาจาก getCurrentUserId() (อ่าน session cookie ฝั่ง server) เท่านั้น ห้ามรับจาก client
+// เด็ดขาด (ดู TASK_E_AUTH.md E6 — RLS ปิดอยู่ทั้ง 13 ตาราง + ต่อ DB ตรงด้วย pg bypass RLS หมด
+// ถ้า API เชื่อ user_id ที่ client ส่งมา ใครก็เปลี่ยนเลขแล้วอ่าน/แก้ตู้เย็นคนอื่นได้ทันที)
 import { query } from "@/lib/server/db";
 import { maybeWriteBackReference } from "@/lib/server/expiryEstimate";
-import { DEMO_USER_ID } from "@/lib/server/demoUser"; // TODO(auth): แทนที่ด้วย user_id จริงตอนต่อ Supabase Auth
+import { getCurrentUserId } from "@/lib/server/currentUser";
 
 export async function GET(req) {
+  const userId = await getCurrentUserId();
+  if (!userId) return Response.json({ error: "ยังไม่ได้เข้าสู่ระบบ" }, { status: 401 });
+
   const nearExpiryDays = new URL(req.url).searchParams.get("nearExpiryDays");
 
   const conditions = ["user_id = $1", "used_at IS NULL"];
-  const params = [DEMO_USER_ID];
+  const params = [userId];
 
   if (nearExpiryDays) {
     conditions.push(`expiry_date <= (CURRENT_DATE + $2::int)`);
@@ -27,6 +34,9 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  const userId = await getCurrentUserId();
+  if (!userId) return Response.json({ error: "ยังไม่ได้เข้าสู่ระบบ" }, { status: 401 });
+
   const body = await req.json();
   const {
     name,
@@ -51,7 +61,7 @@ export async function POST(req) {
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id, name, category, storage_location, expiry_date, quantity, price_per_unit, added_at`,
     [
-      DEMO_USER_ID,
+      userId,
       name.trim(),
       category,
       storageLocation,
@@ -63,7 +73,7 @@ export async function POST(req) {
 
   await query(
     `INSERT INTO item_events (user_id, item_name, event_type) VALUES ($1, $2, 'added')`,
-    [DEMO_USER_ID, name.trim()]
+    [userId, name.trim()]
   );
 
   if (writeBack && days) {

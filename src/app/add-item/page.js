@@ -30,13 +30,19 @@ function AddItemForm() {
   // fallback เป็นค่าว่าง (ไม่ใช่ CATEGORIES[0]) เมื่อเปิดหน้านี้ตรงๆ โดยไม่มี query param —
   // กัน user เผลอบันทึกด้วยหมวดหมู่ที่ระบบเดาให้เฉยๆ ทั้งที่ยังไม่ได้เลือกเอง
   const initialCategory = CATEGORIES.includes(paramCategory) ? paramCategory : "";
+  // /add-item?id=24 = โหมดแก้ไขของเดิม (ดู B3 ใน TASK_B_UI.md) — ใช้หน้าเดิมซ้ำ ไม่แยกหน้าใหม่
+  const editId = searchParams.get("id");
+  const [loadingEdit, setLoadingEdit] = useState(Boolean(editId));
+  const [deleting, setDeleting] = useState(false);
 
   const [name, setName] = useState(initialName);
   const [suggestions, setSuggestions] = useState([]);
   const [storageLocation, setStorageLocation] = useState("fridge");
   const [category, setCategory] = useState(initialCategory);
   const [quantity, setQuantity] = useState(1);
-  const [pricePerUnit, setPricePerUnit] = useState("");
+  // เก็บเป็น "ราคารวมที่จ่าย" ไม่ใช่ราคาต่อหน่วย — ให้ตรงกับหน้าสแกนใบเสร็จ (ดู A5 ใน TASK_A_DATA.md)
+  // หารด้วย quantity ตอนส่งไป API เท่านั้น (API ยังรับ/เก็บเป็น price_per_unit เหมือนเดิม)
+  const [totalPrice, setTotalPrice] = useState("");
 
   // ผลลัพธ์จาก /api/expiry-estimate — เก็บ writeBackToReference จากตรงนี้เสมอ ไม่เปลี่ยนตาม
   // escape-hatch toggle (escape-hatch ห้ามเขียนกลับเสมอ เพราะมันเป็น false อยู่แล้วตั้งแต่ตอนเป็น Path A)
@@ -68,7 +74,53 @@ function AddItemForm() {
     return () => clearTimeout(debounceRef.current);
   }, [name]);
 
-  async function lookupExpiry(foodName, location) {
+  // เรียก lookupExpiry ครั้งเดียวตอน mount ถ้าชื่อมาจาก query param (เช่นจาก /add-item/camera
+  // หลัง AI ทายรูป) — ไม่งั้น uiMode จะค้างเป็น null เพราะ lookupExpiry ปกติถูกเรียกจาก event
+  // (blur/pickSuggestion/handleStorageChange) เท่านั้น ไม่มีอะไรไปเรียกให้ตอนเป็นแค่ค่าตั้งต้นของ state
+  //
+  // ห้ามลืม (B3 ใน TASK_B_UI.md): ตอนมี id (โหมดแก้ไข) ห้ามเรียก lookupExpiry ทับค่าที่โหลดมาเด็ดขาด
+  // ไม่งั้นวันหมดอายุที่ผู้ใช้ตั้งเองจะถูกเขียนทับด้วยค่าที่ระบบเดา — ข้ามไปโหลดข้อมูลเดิมแทนด้านล่าง
+  const didInitialLookupRef = useRef(false);
+  useEffect(() => {
+    if (didInitialLookupRef.current) return;
+    didInitialLookupRef.current = true;
+    if (editId) return;
+    if (initialName.trim()) {
+      // มี initialCategory แปลว่า AI ทายหมวดหมู่มาจากรูปแล้ว (เห็นรูปจริง) — ห้ามให้ lookupExpiry
+      // ทับด้วยหมวดหมู่จาก food_reference (skipCategoryOverride = true)
+      lookupExpiry(initialName, storageLocation, Boolean(initialCategory));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // โหมดแก้ไข — โหลดค่าเดิมของแถวนั้นมาใส่ฟอร์ม (แทนที่ lookupExpiry ทั้งหมด — วันหมดอายุที่โหลดมา
+  // คือของจริงที่บันทึกไว้แล้ว ไม่ใช่ค่าเดาจากระบบ จึงต้องโชว์ตรงๆ ไม่ผ่าน Path A/B)
+  useEffect(() => {
+    if (!editId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/items/${editId}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "โหลดข้อมูลไม่สำเร็จ");
+        const item = data.item;
+        setName(item.name);
+        setCategory(item.category);
+        setStorageLocation(item.storage_location);
+        setQuantity(item.quantity);
+        setTotalPrice(
+          item.price_per_unit != null ? String(Number(item.price_per_unit) * Number(item.quantity)) : ""
+        );
+        setExpiryDate(new Date(item.expiry_date).toISOString().slice(0, 10));
+        setUiMode("edit");
+      } catch (err) {
+        setFormError(err.message);
+      } finally {
+        setLoadingEdit(false);
+      }
+    })();
+  }, [editId]);
+
+  async function lookupExpiry(foodName, location, skipCategoryOverride = false) {
     if (!foodName.trim()) return;
     try {
       const res = await fetch(
@@ -77,7 +129,7 @@ function AddItemForm() {
       const meta = await res.json();
       setExpiryMeta(meta);
       setUiMode(meta.mode);
-      if (meta.category) setCategory(meta.category);
+      if (meta.category && !skipCategoryOverride) setCategory(meta.category);
 
       if (meta.mode === "auto-fill") {
         setExpiryDate(toISODate(meta.defaultDays));
@@ -136,18 +188,50 @@ function AddItemForm() {
       return;
     }
 
-    const days =
-      selectedDays === "custom" || selectedDays === null
-        ? daysBetweenTodayAnd(expiryDate)
-        : selectedDays;
+    if (totalPrice === "" || Number(totalPrice) < 0) {
+      setFormError("กรอกราคารวมที่จ่ายด้วยนะ");
+      return;
+    }
 
-    // เขียนกลับ food_reference เฉพาะตอนเป็น Path B แท้ๆ — expiryMeta.writeBackToReference มาจาก
-    // /api/expiry-estimate อยู่แล้วว่า false เสมอสำหรับ Path A (ไม่ว่าจะ toggle escape-hatch
-    // ไปโชว์ quick-pick หรือไม่ก็ตาม) จึงใช้ค่านี้ตรงๆ ได้เลยไม่ต้องเช็ค uiMode ซ้ำ
-    const writeBack = Boolean(expiryMeta?.writeBackToReference);
+    const quantityNum = Number(quantity) || 1;
+    // rule-based ล้วนๆ (arithmetic ธรรมดา) — คำนวณราคา/หน่วยเองจากราคารวมที่ user กรอกจริง
+    // เหมือน /api/receipt-scan (ดู A5 ใน TASK_A_DATA.md) ไม่ให้ user กรอกราคา/หน่วยตรงๆ อีกต่อไป
+    // เพราะขัดกับหน้าสแกนใบเสร็จที่ให้กรอกราคารวม ทำให้ตีความราคาผิดได้ (เช่นไข่ 6 ฟอง 60 บาท)
+    const pricePerUnit = Number(totalPrice) / quantityNum;
 
     setSubmitting(true);
     try {
+      if (editId) {
+        // แก้ไขของเดิม (B3) — ใช้ PATCH /api/items/[id] ที่มีอยู่แล้ว ไม่ต้องเขียนกลับ food_reference
+        // หรือคำนวณ days ใหม่ (นั่นเป็น logic เฉพาะตอนเพิ่มของใหม่ผ่าน Path A/B เท่านั้น)
+        const res = await fetch(`/api/items/${editId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            category,
+            storageLocation,
+            quantity: quantityNum,
+            pricePerUnit,
+            expiryDate,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+        router.push("/");
+        return;
+      }
+
+      const days =
+        selectedDays === "custom" || selectedDays === null
+          ? daysBetweenTodayAnd(expiryDate)
+          : selectedDays;
+
+      // เขียนกลับ food_reference เฉพาะตอนเป็น Path B แท้ๆ — expiryMeta.writeBackToReference มาจาก
+      // /api/expiry-estimate อยู่แล้วว่า false เสมอสำหรับ Path A (ไม่ว่าจะ toggle escape-hatch
+      // ไปโชว์ quick-pick หรือไม่ก็ตาม) จึงใช้ค่านี้ตรงๆ ได้เลยไม่ต้องเช็ค uiMode ซ้ำ
+      const writeBack = Boolean(expiryMeta?.writeBackToReference);
+
       const res = await fetch("/api/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,8 +239,8 @@ function AddItemForm() {
           name: name.trim(),
           category,
           storageLocation,
-          quantity: Number(quantity) || 1,
-          pricePerUnit: pricePerUnit === "" ? null : Number(pricePerUnit),
+          quantity: quantityNum,
+          pricePerUnit,
           expiryDate,
           days,
           writeBack,
@@ -172,6 +256,25 @@ function AddItemForm() {
     }
   }
 
+  // ลบรายการนี้ทิ้ง (B3) — มีแค่ตอนแก้ไข ไม่มีตอนเพิ่มของใหม่
+  async function handleDelete() {
+    if (!confirm("ลบรายการนี้ทิ้งเลยไหม?")) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/items/${editId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "ลบไม่สำเร็จ");
+      router.push("/");
+    } catch (err) {
+      setFormError(err.message);
+      setDeleting(false);
+    }
+  }
+
+  if (loadingEdit) {
+    return <p className="text-zinc-400 text-sm px-4 pt-6">กำลังโหลด...</p>;
+  }
+
   return (
     <div className="pb-28">
       {/* Header สไตล์หน้าย่อย: ลูกศรย้อนกลับ + ชื่อหน้า */}
@@ -183,7 +286,9 @@ function AddItemForm() {
         >
           <ChevronRightIcon className="w-5 h-5" />
         </Link>
-        <h1 className="font-semibold text-zinc-900 dark:text-zinc-50">เพิ่มของเข้าตู้</h1>
+        <h1 className="font-semibold text-zinc-900 dark:text-zinc-50">
+          {editId ? "แก้ไขของ" : "เพิ่มของเข้าตู้"}
+        </h1>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-4">
@@ -288,17 +393,24 @@ function AddItemForm() {
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              ราคา/หน่วย (ไม่บังคับ)
+              ราคารวมที่จ่าย (บาท)
             </label>
             <input
               type="number"
               min="0"
               step="0.01"
-              value={pricePerUnit}
-              onChange={(e) => setPricePerUnit(e.target.value)}
+              value={totalPrice}
+              onChange={(e) => setTotalPrice(e.target.value)}
               placeholder="บาท"
               className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2.5 text-sm"
+              required
             />
+            {/* ตัวช่วยคำนวณสด บอกราคา/หน่วยที่ได้ — ซ่อนถ้าซื้อชิ้นเดียว (หารแล้วเท่าราคารวมอยู่แล้ว) */}
+            {quantity > 1 && totalPrice !== "" && !Number.isNaN(Number(totalPrice)) && (
+              <p className="text-xs text-zinc-400 mt-1">
+                = {(Number(totalPrice) / quantity).toFixed(2)} บาท/หน่วย
+              </p>
+            )}
           </div>
         </div>
 
@@ -307,6 +419,17 @@ function AddItemForm() {
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
             วันหมดอายุ
           </label>
+
+          {/* โหมดแก้ไข (B3) — ไม่ผ่าน Path A/B เลย โชว์ช่องวันที่ธรรมดาให้แก้ตรงๆ เพราะวันหมดอายุ
+              ที่โหลดมาคือของจริงที่บันทึกไว้แล้ว ไม่ใช่ค่าเดาที่ต้องมี escape-hatch/quick-pick */}
+          {uiMode === "edit" && (
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2.5 text-sm"
+            />
+          )}
 
           {uiMode === "auto-fill" && (
             <div className="flex flex-col gap-1">
@@ -377,8 +500,20 @@ function AddItemForm() {
           disabled={submitting}
           className="mt-2 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white rounded-full py-2.5 text-sm font-medium"
         >
-          {submitting ? "กำลังบันทึก..." : "บันทึก"}
+          {submitting ? "กำลังบันทึก..." : editId ? "บันทึกการแก้ไข" : "บันทึก"}
         </button>
+
+        {/* ลบรายการนี้ — มีแค่ตอนแก้ไข (B3) */}
+        {editId && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting || submitting}
+            className="text-sm text-rose-500 hover:underline disabled:opacity-50"
+          >
+            {deleting ? "กำลังลบ..." : "ลบรายการนี้"}
+          </button>
+        )}
       </form>
     </div>
   );
