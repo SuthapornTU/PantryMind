@@ -24,7 +24,7 @@ export async function POST(req) {
   const imageBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
   const prompt = `นี่คือรูปใบเสร็จซื้อของ ให้แกะรายการสินค้าที่เป็นอาหาร/ของใช้ในครัวออกมาเท่านั้น (ห้ามเอา VAT, ส่วนลด, ยอดรวม, ชื่อร้าน, ค่าถุง มาด้วย) ตอบเป็น JSON array เท่านั้น ห้ามมีข้อความอื่น รูปแบบ: [{"name": "ชื่อภาษาไทยสั้นๆ", "category": "หนึ่งในนี้เท่านั้น: ${CATEGORIES.join(
     ", "
-  )}", "quantity": ตัวเลขจำนวนชิ้น (ถ้าอ่านไม่ได้ให้ใส่ 1), "line_total_price": ราคารวมของบรรทัดนั้นตามที่พิมพ์บนใบเสร็จ ไม่ใช่ราคาต่อหน่วย (ถ้าอ่านไม่ได้ให้ใส่ null)}]`;
+  )}", "quantity": ตัวเลขจำนวนชิ้น (ถ้าอ่านไม่ได้ให้ใส่ 1 — สำคัญ: quantity คือจำนวนชิ้น/แพ็คที่ซื้อ ไม่ใช่น้ำหนักหรือปริมาตร เช่น "หมูสับ 0.5 กก." หรือ "น้ำมันพืช 1 ลิตร" ให้ตอบ quantity เป็น 1 เสมอ ห้ามเอาตัวเลขน้ำหนัก/ปริมาตรมาใส่), "line_total_price": ราคารวมของบรรทัดนั้นตามที่พิมพ์บนใบเสร็จ ไม่ใช่ราคาต่อหน่วย (ถ้าอ่านไม่ได้ให้ใส่ null)}]`;
 
   let text = "";
   try {
@@ -73,8 +73,10 @@ export async function POST(req) {
     if (!name) continue;
 
     const category = CATEGORIES.includes(raw.category) ? raw.category : "อื่นๆ";
+    // กันฝั่ง server เผื่อ AI ยังเผลอตอบน้ำหนัก/ปริมาตรมาเป็น quantity (เช่น 0.5 จาก "หมูสับ 0.5 กก.")
+    // ทั้งที่ prompt สั่งห้ามแล้ว — ปัดเป็นจำนวนเต็มที่ใกล้ที่สุดและอย่างน้อย 1 เสมอ (ดู A6 ใน TASK_A_DATA.md)
     const quantityNum = Number(raw.quantity);
-    const quantity = Number.isFinite(quantityNum) && quantityNum > 0 ? quantityNum : 1;
+    const quantity = Number.isFinite(quantityNum) && quantityNum > 0 ? Math.max(1, Math.round(quantityNum)) : 1;
     const defaultStorage = CATEGORY_DEFAULT_STORAGE[category] || "fridge";
 
     // rule-based ล้วนๆ (arithmetic ธรรมดา ไม่ใช้ AI) — Gemini แค่อ่านราคารวมของบรรทัดตามที่พิมพ์บน

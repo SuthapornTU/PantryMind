@@ -31,3 +31,22 @@ function getPool() {
 export function query(text, params) {
   return getPool().query(text, params);
 }
+
+// ครอบหลาย query ด้วย transaction เดียว (BEGIN/COMMIT/ROLLBACK) — ใช้ตอนมีหลาย query ที่ต้อง
+// สำเร็จ "พร้อมกันทั้งหมด" เท่านั้น เช่น resolve item (UPDATE pantry_items + INSERT item_events)
+// ถ้า query ใดพังกลางทาง ให้ ROLLBACK ทุกอย่างกลับ ไม่งั้นข้อมูลจะเพี้ยนแบบเงียบๆ (ของหายจากตู้เย็น
+// แต่ไม่มีบันทึกว่าทิ้ง) — client ต้อง release กลับ pool เสมอไม่ว่าจะสำเร็จหรือพัง
+export async function withTransaction(fn) {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
