@@ -5,32 +5,19 @@
 // เดิม (แกะใบเสร็จหลายชิ้น) logic เรียก API ทั้งสองเส้นเหมือนเดิมทุกประการ ไม่ได้เขียนใหม่
 // - "สแกนตัวสินค้า": POST /api/vision-identify → สำเร็จ redirect ไป /add-item?name=...&category=...
 // - "สแกนใบเสร็จ": POST /api/receipt-scan → สำเร็จ โชว์ลิสต์รีวิวในหน้าเดียวกันเลย (ไม่ redirect)
-//   ยืนยันแล้วค่อยวนลูป POST /api/items ทีละชิ้น (เหมือนฟอร์ม add-item ปกติ) — ไม่มีจุดไหนบันทึก
-//   ลง pantry_items อัตโนมัติจากผล AI ทั้งคู่ ต้องผ่านการยืนยันของ user เสมอ
+//   ใช้ ReceiptReviewForm (component เดียวกับที่หน้า /shopping ใช้ตอน "เก็บเข้าตู้เย็น" — ดู C2 ใน
+//   TASK_C_SHOPPING.md) ไม่มีจุดไหนบันทึกลง pantry_items อัตโนมัติจากผล AI ต้องผ่านการยืนยันของ user เสมอ
 // - "สแกนบาร์โค้ด": ยังไม่ implement (เฟสถัดไป) ปุ่มถ่ายรูปถูก disable ไว้
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { STORAGE_LOCATIONS } from "@/lib/shared/constants";
 import { ChevronRightIcon, CameraIcon, BarcodeIcon, ReceiptIcon } from "@/components/icons";
+import ReceiptReviewForm from "@/components/ReceiptReviewForm";
 
 function toISODate(daysFromToday) {
   const d = new Date();
   d.setDate(d.getDate() + daysFromToday);
   return d.toISOString().slice(0, 10);
-}
-
-function daysBetweenTodayAnd(dateStr) {
-  const diff = new Date(dateStr) - new Date(new Date().toISOString().slice(0, 10));
-  return Math.round(diff / (1000 * 60 * 60 * 24));
-}
-
-function isResolved(item) {
-  if (!item.included) return true;
-  if (item.expiryMode === "auto-fill") return true;
-  if (item.selectedDays === null) return false;
-  if (item.selectedDays === "custom") return Boolean(item.expiryDate);
-  return true;
 }
 
 const MODES = [
@@ -54,10 +41,8 @@ export default function AddItemCameraPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  // ผลลัพธ์จาก /api/receipt-scan — null = ยังไม่ได้สแกน/อยู่ในโหมดอื่น, มีค่า = โชว์หน้ารีวิวแทน
+  // ผลลัพธ์จาก /api/receipt-scan — null = ยังไม่ได้สแกน/อยู่ในโหมดอื่น, มีค่า = โชว์ ReceiptReviewForm แทน
   const [receiptItems, setReceiptItems] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
 
   function handleModeChange(next) {
     setMode(next);
@@ -116,91 +101,6 @@ export default function AddItemCameraPage() {
     } catch (err) {
       setError(err.message);
       setBusy(false);
-    }
-  }
-
-  function updateReceiptItem(id, patch) {
-    setReceiptItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
-  }
-
-  async function handleStorageChange(item, storageLocation) {
-    updateReceiptItem(item.id, { storageLocation });
-    try {
-      const res = await fetch(
-        `/api/expiry-estimate?name=${encodeURIComponent(item.name)}&storageLocation=${storageLocation}`
-      );
-      const meta = await res.json();
-      if (meta.mode === "auto-fill") {
-        updateReceiptItem(item.id, {
-          expiryMode: "auto-fill",
-          expiryDate: toISODate(meta.defaultDays),
-          selectedDays: meta.defaultDays,
-          writeBackToReference: Boolean(meta.writeBackToReference),
-        });
-      } else {
-        updateReceiptItem(item.id, {
-          expiryMode: "quick-pick",
-          expiryDate: "",
-          selectedDays: null,
-          writeBackToReference: Boolean(meta.writeBackToReference),
-        });
-      }
-    } catch {
-      // เงียบไว้ — user ยังเลือกวันหมดอายุเองผ่าน quick-pick ได้
-    }
-  }
-
-  function pickQuickDays(item, d) {
-    if (d === "custom") {
-      updateReceiptItem(item.id, { selectedDays: "custom", expiryDate: toISODate(7) });
-    } else {
-      updateReceiptItem(item.id, { selectedDays: d, expiryDate: toISODate(d) });
-    }
-  }
-
-  const includedItems = receiptItems?.filter((it) => it.included) || [];
-  const confirmDisabled =
-    submitting || includedItems.length === 0 || !includedItems.every(isResolved);
-
-  async function handleConfirmAll() {
-    setSubmitError(null);
-    setSubmitting(true);
-    try {
-      for (const item of includedItems) {
-        const days =
-          item.selectedDays === "custom" || item.selectedDays === null
-            ? daysBetweenTodayAnd(item.expiryDate)
-            : item.selectedDays;
-
-        const quantity = Number(item.quantity) || 1;
-        // ราคารวมที่ user เห็น/แก้ไขในการ์ด → แปลงกลับเป็นราคา/หน่วยตอนบันทึกจริง (rule-based ธรรมดา)
-        const pricePerUnit =
-          item.lineTotalPrice === "" || item.lineTotalPrice === null
-            ? null
-            : Number(item.lineTotalPrice) / quantity;
-
-        const res = await fetch("/api/items", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: item.name.trim(),
-            category: item.category,
-            storageLocation: item.storageLocation,
-            quantity,
-            pricePerUnit,
-            expiryDate: item.expiryDate,
-            days,
-            writeBack: Boolean(item.writeBackToReference),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `เพิ่ม "${item.name}" ไม่สำเร็จ`);
-      }
-      router.push("/");
-    } catch (err) {
-      setSubmitError(err.message);
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -298,141 +198,7 @@ export default function AddItemCameraPage() {
           )}
         </div>
       ) : (
-        // รีวิวรายการที่แกะได้จากใบเสร็จ
-        <div className="px-4 flex flex-col gap-3">
-          <p className="text-xs text-zinc-400">แก้ไข/เอาออกได้ก่อนยืนยัน — เอาชื่อร้าน ยอดรวม ค่าถุงออกให้แล้ว</p>
-
-          <ul className="flex flex-col gap-3">
-            {receiptItems.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-xl bg-white dark:bg-zinc-800 shadow-sm p-3 flex flex-col gap-3"
-              >
-                <div className="flex items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={item.included}
-                    onChange={(e) => updateReceiptItem(item.id, { included: e.target.checked })}
-                    className="mt-2.5 w-4 h-4 accent-rose-500 shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <input
-                      type="text"
-                      value={item.name}
-                      onChange={(e) => updateReceiptItem(item.id, { name: e.target.value })}
-                      className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-medium"
-                    />
-                    <span className="inline-block mt-1.5 text-xs font-medium rounded-full px-2 py-0.5 bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                      {item.category}
-                    </span>
-                  </div>
-                </div>
-
-                {item.included && (
-                  <>
-                    {/* ที่เก็บ */}
-                    <div className="flex gap-2">
-                      {STORAGE_LOCATIONS.map((s) => (
-                        <button
-                          type="button"
-                          key={s.value}
-                          onClick={() => handleStorageChange(item, s.value)}
-                          className={`px-3 py-1.5 rounded-full text-sm border ${
-                            item.storageLocation === s.value
-                              ? "bg-rose-500 text-white border-rose-500"
-                              : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-700"
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* วันหมดอายุ */}
-                    {item.expiryMode === "auto-fill" ? (
-                      <div className="flex flex-col gap-1">
-                        <input
-                          type="date"
-                          value={item.expiryDate}
-                          onChange={(e) => updateReceiptItem(item.id, { expiryDate: e.target.value })}
-                          className="w-full rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 font-medium px-3 py-2 text-sm"
-                        />
-                        <p className="text-xs text-zinc-400">ระบบเดาให้จากฐานข้อมูล แก้ไขได้เลย</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <div className="flex gap-2 flex-wrap">
-                          {[3, 7, 15, "custom"].map((d) => (
-                            <button
-                              type="button"
-                              key={d}
-                              onClick={() => pickQuickDays(item, d)}
-                              className={`px-3 py-1.5 rounded-full text-sm border ${
-                                item.selectedDays === d
-                                  ? "bg-rose-500 text-white border-rose-500"
-                                  : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300"
-                              }`}
-                            >
-                              {d === "custom" ? "กำหนดเอง" : `${d} วัน`}
-                            </button>
-                          ))}
-                        </div>
-                        {item.selectedDays === "custom" && (
-                          <input
-                            type="date"
-                            value={item.expiryDate}
-                            onChange={(e) => updateReceiptItem(item.id, { expiryDate: e.target.value })}
-                            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
-                          />
-                        )}
-                        {item.selectedDays === null && (
-                          <p className="text-xs text-amber-600">ยังไม่รู้จักของนี้ — เลือกวันหมดอายุก่อนนะ</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* จำนวน + ราคารวม */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">จำนวน</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateReceiptItem(item.id, { quantity: e.target.value })}
-                          className="w-20 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-sm"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">ราคารวม</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.lineTotalPrice}
-                          onChange={(e) => updateReceiptItem(item.id, { lineTotalPrice: e.target.value })}
-                          placeholder="บาท"
-                          className="w-24 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-sm"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-
-          {submitError && <p className="text-sm text-rose-600">{submitError}</p>}
-
-          <button
-            type="button"
-            onClick={handleConfirmAll}
-            disabled={confirmDisabled}
-            className="mt-1 mb-4 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white rounded-full py-2.5 text-sm font-medium"
-          >
-            {submitting ? "กำลังบันทึก..." : "ยืนยันเพิ่มทั้งหมด"}
-          </button>
-        </div>
+        <ReceiptReviewForm items={receiptItems} onConfirmed={() => router.push("/")} />
       )}
     </div>
   );
