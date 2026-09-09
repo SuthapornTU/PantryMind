@@ -8,7 +8,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronRightIcon } from "@/components/icons";
 import WasteResolveForm from "@/components/WasteResolveForm";
@@ -53,7 +53,9 @@ function expandToPieces(rows) {
 export default function GroupPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const name = decodeURIComponent(params.name);
+  const storage = searchParams.get("storage");
 
   const [rows, setRows] = useState(null); // null = กำลังโหลด
   const [error, setError] = useState(null);
@@ -68,7 +70,10 @@ export default function GroupPage() {
   async function load() {
     setError(null);
     try {
-      const res = await fetch(`/api/items/group/${encodeURIComponent(name)}`);
+      const url = storage
+        ? `/api/items/group/${encodeURIComponent(name)}?storage=${encodeURIComponent(storage)}`
+        : `/api/items/group/${encodeURIComponent(name)}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "โหลดรายการไม่สำเร็จ");
       setRows(data.rows);

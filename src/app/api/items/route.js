@@ -24,7 +24,8 @@ export async function GET(req) {
   }
 
   const result = await query(
-    `SELECT id, name, category, storage_location, expiry_date, quantity, price_per_unit, added_at
+    `SELECT id, name, category, storage_location, expiry_date, quantity, price_per_unit, added_at,
+            used_count, wasted_count
      FROM pantry_items
      WHERE ${conditions.join(" AND ")}
      ORDER BY expiry_date ASC`,

@@ -11,15 +11,23 @@ export async function GET(req, { params }) {
   if (!userId) return Response.json({ error: "ยังไม่ได้เข้าสู่ระบบ" }, { status: 401 });
 
   const { name } = await params;
+  const storage = new URL(req.url).searchParams.get("storage");
+
+  const conditions = ["user_id = $1", "used_at IS NULL", "name = $2"];
+  const values = [userId, decodeURIComponent(name)];
+  if (storage) {
+    conditions.push(`storage_location = $3`);
+    values.push(storage);
+  }
 
   const result = await query(
     `SELECT id, name, category, storage_location, expiry_date, quantity, price_per_unit,
             used_count, wasted_count, open_fraction,
             (quantity - used_count - wasted_count) AS remaining
      FROM pantry_items
-     WHERE user_id = $1 AND used_at IS NULL AND name = $2
+     WHERE ${conditions.join(" AND ")}
      ORDER BY expiry_date ASC`,
-    [userId, decodeURIComponent(name)]
+    values
   );
 
   const rows = result.rows
