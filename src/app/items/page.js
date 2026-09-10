@@ -107,12 +107,16 @@ export default function ItemsPage() {
     return groupByNameAndStorage(items);
   }, [items]);
 
-  // เรียงชื่อก่อน (ให้การ์ดชื่อซ้ำแต่คนละที่เก็บอยู่ติดกันเสมอ) แล้วค่อยเรียงวันหมดอายุในชื่อเดียวกัน
+  // เรียงตามวันหมดอายุเป็นหลัก (เหมือนหน้าแรก) — ใกล้หมดอายุ/หมดอายุแล้วอยู่บนสุดเสมอ ใช้ชื่อเป็นตัว
+  // ตัดสินรองเฉพาะตอนวันหมดอายุตรงกันเป๊ะ (กันลำดับสลับไปมาแบบไม่มีเหตุผล) — ไม่ต้องมี logic พิเศษแยก
+  // สำหรับ "จับชื่อซ้ำให้ติดกัน" เพราะถ้าวันหมดอายุใกล้กันจริง การเรียงตามวันจะทำให้การ์ดไปอยู่ติดกันเอง
+  // อยู่แล้วโดยธรรมชาติ ส่วนกรณีชื่อซ้ำแต่วันหมดอายุห่างกันมาก ก็ควรแยกตำแหน่งกันจริงๆ เพราะสื่อความ
+  // เร่งด่วนต่างกัน — การฝืนจับมาติดกันจะขัดกับเป้าหมายหลักของหน้านี้ (เตือนของใกล้หมดอายุก่อน)
   const sortedGroups = useMemo(() => {
     return [...groups].sort((a, b) => {
-      const nameCmp = a.name.localeCompare(b.name, "th");
-      if (nameCmp !== 0) return nameCmp;
-      return new Date(a.earliestExpiry) - new Date(b.earliestExpiry);
+      const dateCmp = new Date(a.earliestExpiry) - new Date(b.earliestExpiry);
+      if (dateCmp !== 0) return dateCmp;
+      return a.name.localeCompare(b.name, "th");
     });
   }, [groups]);
 
